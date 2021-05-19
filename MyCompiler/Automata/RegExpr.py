@@ -1,5 +1,6 @@
-from AutomataStructure import *
+from Automata import *
 from enum import Enum
+
 
 class Operation(Enum):
     CONCAT = 1
@@ -7,6 +8,7 @@ class Operation(Enum):
     KLEENE = 3
     GROUP = 4
     IDENTITY = 5
+
 
 class SpecialCharacter(Enum):
     LEFT_PAREN = 1
@@ -145,7 +147,6 @@ class RegExprParseTree:
         if len(expression) == 1:
             return expression
 
-
         concat_target = RegExprParseTree(expression[0], Operation.CONCAT, expression[1])
         return RegExprParseTree.handle_concat(
             [concat_target] + expression[2:])
@@ -161,10 +162,7 @@ class RegExpr:
             assert isinstance(term, Element) or isinstance(term, SpecialCharacter)
         self.expression = expression
         self.alphabet = alphabet
-        self.parse_tree = self.build_parse_tree()
-
-    def build_parse_tree(self):
-        pass
+        self.parse_tree = RegExprParseTree.build_from_expression(self.expression)
 
     @staticmethod
     def from_string(string):
@@ -191,10 +189,7 @@ class RegExpr:
 
 def do_stuff():
     expr = RegExpr.from_string('(a|b)*abb')
-    print(expr.expression)
-    pt1 = RegExprParseTree(Element('a'), Operation.CONCAT, Element('b'))
-    pt2 = RegExprParseTree.build_from_expression(expr.expression)
-    print(pt2)
+    print(expr.parse_tree)
 
 
 if __name__ == '__main__':

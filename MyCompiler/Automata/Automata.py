@@ -16,6 +16,10 @@ class Element:
         return str(self.value)
     __repr__ = __str__
 
+class EmptyExpression(Element):
+    def __init__(self):
+        super().__init__(None)
+
 
 class Alphabet:
     # This describes all the elements of some alphabet sigma
@@ -28,6 +32,10 @@ class Alphabet:
     def __str__(self):
         return str(self.elements)
     __repr__ = __str__
+
+    def union(self, other):
+        assert isinstance(other, Alphabet)
+        return Alphabet(list(set(self.elements).union(set(other.elements))))
 
 
 class Transition:
@@ -43,6 +51,13 @@ class State:
         self.accepting = accepting
         self.outgoing = dict() if outgoing is None else outgoing
 
+    def add_outgoing(self, transition):
+        assert isinstance(transition, Transition)
+        self._handle_add_outgoing(transition)
+
+    def _handle_add_outgoing(self, transition):
+        raise Exception('This should be handled by a more derived class.')
+
 
 class NFAState(State):
     # Nondeterministic Finite Automata
@@ -56,6 +71,9 @@ class NFAState(State):
                 assert isinstance(transition, Transition)
                 assert element == transition.element
 
+    def _handle_add_outgoing(self, transition):
+        self.outgoing.setdefault(transition.element, []).append(transition)
+
 
 class DFAState(State):
     # Deterministic Finite Automata
@@ -67,6 +85,11 @@ class DFAState(State):
         for element, transition in self.outgoing.items():
             assert isinstance(transition, Transition)
             assert element == transition.element
+
+    def handle_add_outgoing(self, transition):
+        if transition.element not in self.outgoing:
+            raise Exception('Transition already exists for given Element.')
+        self.outgoing[transition.element] = transition
 
 
 class Automata:
@@ -82,13 +105,41 @@ class DFA(Automata):
 
 
 class NFA(Automata):
-    pass
+    @staticmethod
+    def basis(element=None):
+        element = EmptyExpression() if element is None else element
+        assert isinstance(element, Element)
+        end_state = NFAState('f', accepting=True)
+        transition_to_end = Transition(element, end_state)
+        start_state = NFAState('i', outgoing={None: [transition_to_end]})
+        return NFA(start_state, Alphabet([element]))
+
+
+class NFAOneStartOneEnd(NFA):
+    def __init__(self, start, alphabet, stop):
+        assert isinstance(stop, State)
+        self.stop = stop
+        super().__init__(start, alphabet)
+
+    @staticmethod
+    def basis(element=None):
+        element = EmptyExpression() if element is None else element
+        assert isinstance(element, Element)
+        end_state = NFAState('f', accepting=True)
+        transition_to_end = Transition(element, end_state)
+        start_state = NFAState('i', outgoing={element: [transition_to_end]})
+        return NFAOneStartOneEnd(start_state, Alphabet([element]), end_state)
+
 
 
 def do_stuff():
     sigma1 = Alphabet([Element('a'), Element('b')])
     sigma2 = Alphabet([Element('apples'), Element('oranges')])
     print(sigma2)
+    nfa1 = NFA.basis()
+    nfa2 = NFA.basis(Element('abc123'))
+    print(nfa1.alphabet)
+    print(nfa2.alphabet)
 
 
 if __name__ == '__main__':
