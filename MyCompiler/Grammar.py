@@ -1,6 +1,7 @@
 import re
 
-class Symbol:
+
+class GrammarSymbol:
     def __init__(self, string):
         self.string = string
 
@@ -8,7 +9,7 @@ class Symbol:
         return hash(self.string)
 
     def __eq__(self, other):
-        if not isinstance(other, Symbol):
+        if not isinstance(other, GrammarSymbol):
             return False
         return hash(self) == hash(other)
 
@@ -16,11 +17,14 @@ class Symbol:
         return self.string
     __repr__ = __str__
 
-class Terminal(Symbol):
+
+class Terminal(GrammarSymbol):
     pass
 
-class Nonterminal(Symbol):
+
+class Nonterminal(GrammarSymbol):
     pass
+
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):
@@ -51,7 +55,6 @@ class Grammar:
                     start_symbol = current_nonterminal
             elif m := re.match(r'^\|(.*)$', rest_of_line):
                 # we are on a new line doing a shorthand production
-                current_rule = []
                 rest_of_line = m.group(1).strip()
 
             current_rule = []
@@ -75,23 +78,18 @@ class Grammar:
 
             productions.setdefault(current_nonterminal, []).append(current_rule)
         nonterminals = set(productions.keys())
-        all_rhs_symbols = set([symbol for prod_list in productions.values() for production in prod_list for symbol in production])
+        all_rhs_symbols = set([symbol
+                               for productions_for_rule in productions.values()
+                               for production in productions_for_rule
+                               for symbol in production])
         terminals = all_rhs_symbols.difference(nonterminals)
         return Grammar(terminals, nonterminals, productions, start_symbol)
 
 
-
-
-
-
-
 if __name__ == '__main__':
-    with open('Grammars/grammar4.1.txt', 'r') as file:
+    with open('Grammars/grammar4.1_augmented.txt', 'r') as file:
         g = Grammar.from_string(file.read())
     print('terminals: ', g.terminals)
     print('nonterminals: ', g.nonterminals)
     print('productions: ', g.productions)
     print('start_symbol: ', g.start_symbol)
-
-
-
