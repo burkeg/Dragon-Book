@@ -12,11 +12,22 @@ class Element:
             return False
         return hash(self) == hash(other)
 
+    def __str__(self):
+        return str(self.value)
+    __repr__ = __str__
+
 
 class Alphabet:
     # This describes all the elements of some alphabet sigma
     def __init__(self, elements):
         self.elements = elements
+
+    def __contains__(self, item):
+        return item in self.elements
+
+    def __str__(self):
+        return str(self.elements)
+    __repr__ = __str__
 
 
 class Transition:
@@ -64,3 +75,21 @@ class Automata:
         assert isinstance(alphabet, Alphabet)
         self.start = start
         self.alphabet = alphabet
+
+
+class DFA(Automata):
+    pass
+
+
+class NFA(Automata):
+    pass
+
+
+def do_stuff():
+    sigma1 = Alphabet([Element('a'), Element('b')])
+    sigma2 = Alphabet([Element('apples'), Element('oranges')])
+    print(sigma2)
+
+
+if __name__ == '__main__':
+    do_stuff()
