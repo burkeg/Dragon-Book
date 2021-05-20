@@ -1,5 +1,6 @@
-from Automata import *
 from enum import Enum
+
+from Automata.Automata import Element, Alphabet
 
 
 class Operation(Enum):

@@ -16,6 +16,14 @@ class Element:
         return str(self.value)
     __repr__ = __str__
 
+    @staticmethod
+    def element_list_from_string(string):
+        assert isinstance(string, str)
+        elements = []
+        for character in string:
+            elements.append(Element(character))
+        return elements
+
 class EmptyExpression(Element):
     def __init__(self):
         super().__init__(None)
@@ -126,6 +134,21 @@ class Automata:
                     visited.add(transition.target)
                     queue.append(transition.target)
 
+    def ending_states(self):
+        end_states = set()
+        visited = {self.start}
+        queue = [self.start]
+        while len(queue) > 0:
+            curr = queue.pop(0)
+            assert isinstance(curr, State)
+            if curr.accepting:
+                end_states.add(curr)
+            for transition in curr.outgoing_flat():
+                w = transition.target
+                if w not in visited:
+                    visited.add(transition.target)
+                    queue.append(transition.target)
+        return end_states
 
 class DFA(Automata):
     pass
