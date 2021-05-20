@@ -50,12 +50,19 @@ class State:
         self.name = "" if name is None else name
         self.accepting = accepting
         self.outgoing = dict() if outgoing is None else outgoing
+        self.ID = None
 
     def add_outgoing(self, transition):
         assert isinstance(transition, Transition)
-        self._handle_add_outgoing(transition)
+        self._add_outgoing(transition)
 
-    def _handle_add_outgoing(self, transition):
+    def _add_outgoing(self, transition):
+        raise Exception('This should be handled by a more derived class.')
+
+    def outgoing_flat(self):
+        return self._outgoing_flat()
+
+    def _outgoing_flat(self):
         raise Exception('This should be handled by a more derived class.')
 
 
@@ -71,8 +78,11 @@ class NFAState(State):
                 assert isinstance(transition, Transition)
                 assert element == transition.element
 
-    def _handle_add_outgoing(self, transition):
+    def _add_outgoing(self, transition):
         self.outgoing.setdefault(transition.element, []).append(transition)
+
+    def _outgoing_flat(self):
+        return [transition for transition_list in self.outgoing.values() for transition in transition_list]
 
 
 class DFAState(State):
@@ -86,10 +96,13 @@ class DFAState(State):
             assert isinstance(transition, Transition)
             assert element == transition.element
 
-    def handle_add_outgoing(self, transition):
+    def _add_outgoing(self, transition):
         if transition.element not in self.outgoing:
             raise Exception('Transition already exists for given Element.')
         self.outgoing[transition.element] = transition
+
+    def _outgoing_flat(self):
+        return [transition for transition in self.outgoing.values()]
 
 
 class Automata:
@@ -98,6 +111,20 @@ class Automata:
         assert isinstance(alphabet, Alphabet)
         self.start = start
         self.alphabet = alphabet
+
+    def relabel(self):
+        visited = {self.start}
+        count = 0
+        queue = [self.start]
+        while len(queue) > 0:
+            curr = queue.pop(0)
+            curr.name = str(count)
+            count += 1
+            for transition in curr.outgoing_flat():
+                w = transition.target
+                if w not in visited:
+                    visited.add(transition.target)
+                    queue.append(transition.target)
 
 
 class DFA(Automata):
@@ -113,6 +140,7 @@ class NFA(Automata):
         transition_to_end = Transition(element, end_state)
         start_state = NFAState('i', outgoing={None: [transition_to_end]})
         return NFA(start_state, Alphabet([element]))
+
 
 
 class NFAOneStartOneEnd(NFA):
