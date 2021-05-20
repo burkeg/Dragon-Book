@@ -33,6 +33,8 @@ class Alphabet:
     # This describes all the elements of some alphabet sigma
     def __init__(self, elements):
         self.elements = elements
+        for element in elements:
+            assert isinstance(element, Element)
 
     def __contains__(self, item):
         return item in self.elements
@@ -45,6 +47,9 @@ class Alphabet:
         assert isinstance(other, Alphabet)
         return Alphabet(list(set(self.elements).union(set(other.elements))))
 
+    def __iter__(self):
+        return iter(self.elements)
+
 
 class Transition:
     # This describes some transition between states on an automata
@@ -54,11 +59,11 @@ class Transition:
 
 
 class State:
-    def __init__(self, name=None, accepting=False, outgoing=None):
+    def __init__(self, name=None, accepting=False, outgoing=None, ID=None):
         self.name = "" if name is None else name
         self.accepting = accepting
         self.outgoing = dict() if outgoing is None else outgoing
-        self.ID = None
+        self.ID = -1 if ID is None else ID
 
     def add_outgoing(self, transition):
         assert isinstance(transition, Transition)
@@ -78,8 +83,8 @@ class NFAState(State):
     # Nondeterministic Finite Automata
     # outgoing is a dictionary of key value pairs where the keys are of type Element
     # and the values are lists Transitions
-    def __init__(self, name=None, accepting=False, outgoing=None):
-        super().__init__(name, accepting, outgoing)
+    def __init__(self, name=None, accepting=False, outgoing=None, ID=None):
+        super().__init__(name, accepting, outgoing, ID)
         assert isinstance(self.outgoing, dict)
         for element, transition_list in self.outgoing.items():
             for transition in transition_list:
@@ -97,15 +102,15 @@ class DFAState(State):
     # Deterministic Finite Automata
     # outgoing is a dictionary of key value pairs where the keys are of type Element
     # and the values of type Transition
-    def __init__(self, name=None, accepting=False, outgoing=None):
-        super().__init__(name, accepting, outgoing)
+    def __init__(self, name=None, accepting=False, outgoing=None, ID=None):
+        super().__init__(name, accepting, outgoing, ID)
         assert isinstance(self.outgoing, dict)
         for element, transition in self.outgoing.items():
             assert isinstance(transition, Transition)
             assert element == transition.element
 
     def _add_outgoing(self, transition):
-        if transition.element not in self.outgoing:
+        if transition.element in self.outgoing:
             raise Exception('Transition already exists for given Element.')
         self.outgoing[transition.element] = transition
 
@@ -126,7 +131,7 @@ class Automata:
         queue = [self.start]
         while len(queue) > 0:
             curr = queue.pop(0)
-            curr.name = str(count)
+            curr.ID = count
             count += 1
             for transition in curr.outgoing_flat():
                 w = transition.target
@@ -161,7 +166,7 @@ class NFA(Automata):
         assert isinstance(element, Element)
         end_state = NFAState('f', accepting=True)
         transition_to_end = Transition(element, end_state)
-        start_state = NFAState('i', outgoing={None: [transition_to_end]})
+        start_state = NFAState('i', outgoing={element: [transition_to_end]})
         return NFA(start_state, Alphabet([element]))
 
 

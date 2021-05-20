@@ -1,5 +1,6 @@
-from Automata.Automata import Automata, NFA, Transition, EmptyExpression, NFAState, Element, NFAOneStartOneEnd
-from Automata.RegExpr import RegExpr, RegExprParseTree, Operation
+from Automata import Automata, NFA, Transition, EmptyExpression, NFAState, Element, NFAOneStartOneEnd, DFA, DFAState, \
+    State
+from RegExpr import RegExpr, RegExprParseTree, Operation
 
 
 class Simulator:
@@ -10,30 +11,7 @@ class Simulator:
 class EOF:
     pass
 
-
-class NFASimulator(Simulator):
-    def __init__(self, automata):
-        assert isinstance(automata, NFA)
-        super().__init__(automata)
-        self.expression = None
-
-    def next_element(self):
-        for element in self.expression:
-            yield element
-        yield EOF()
-
-
-    def simulate(self, expression):
-        self.expression = expression
-        F = self.automata.ending_states()
-        S = self.epsilon_closure(self.automata.start)
-        element_gen = self.next_element()
-        c = next(element_gen)
-        while not isinstance(c, EOF):
-            S = self.epsilon_closure(self.move(S, c))
-            c = next(element_gen)
-        return len(S.intersection(F)) != 0
-
+class AutomataUtils:
     @staticmethod
     def epsilon_touching(s):
         states = set()
@@ -54,7 +32,7 @@ class NFASimulator(Simulator):
         epsilon_closure = T
         while len(stack) > 0:
             t = stack.pop()
-            for u in NFASimulator.epsilon_touching(t):
+            for u in AutomataUtils.epsilon_touching(t):
                 if u not in epsilon_closure:
                     epsilon_closure.add(u)
                     stack.append(u)
@@ -62,16 +40,64 @@ class NFASimulator(Simulator):
 
     @staticmethod
     def move(T, a):
+        if isinstance(T, State):
+            T = {T}
         # Set of NFA states to which there is a transition on input symbol a from some state s
-        assert isinstance(T, set)
+        assert isinstance(T, set) or isinstance(T, frozenset)
         assert isinstance(a, Element)
         moveable_states = set()
         for state in T:
-            assert isinstance(state, NFAState)
+            assert isinstance(state, State)
             for transition in state.outgoing_flat():
                 if transition.element == a:
                     moveable_states.add(transition.target)
         return moveable_states
+
+class NFASimulator(Simulator):
+    def __init__(self, automata):
+        assert isinstance(automata, NFA)
+        super().__init__(automata)
+        self.expression = None
+
+    def next_element(self):
+        for element in self.expression:
+            yield element
+        yield EOF()
+
+
+    def simulate(self, expression):
+        self.expression = expression
+        F = self.automata.ending_states()
+        S = AutomataUtils.epsilon_closure(self.automata.start)
+        element_gen = self.next_element()
+        c = next(element_gen)
+        while not isinstance(c, EOF):
+            S = AutomataUtils.epsilon_closure(AutomataUtils.move(S, c))
+            c = next(element_gen)
+        return len(S.intersection(F)) != 0
+
+class DFASimulator(Simulator):
+    def __init__(self, automata):
+        assert isinstance(automata, DFA)
+        super().__init__(automata)
+        self.expression = None
+
+    def next_element(self):
+        for element in self.expression:
+            yield element
+        yield EOF()
+
+
+    def simulate(self, expression):
+        self.expression = expression
+        F = self.automata.ending_states()
+        s = self.automata.start
+        element_gen = self.next_element()
+        c = next(element_gen)
+        while not isinstance(c, EOF):
+            s = AutomataUtils.epsilon_closure(AutomataUtils.move({s}, c)).pop()
+            c = next(element_gen)
+        return s in F
 
 
 def RegExpr_to_NFA(regexpr):
@@ -137,13 +163,61 @@ def RegExpr_to_NFA(regexpr):
 
     return recursive_parse_tree_to_NFA(regexpr.parse_tree)
 
+def NFAtoDFA(nfa):
+    assert isinstance(nfa, NFA)
+    Dtran = dict()
+    # intially e-closure(s_0) is the only state in Dstates
+    start_dstate = frozenset(AutomataUtils.epsilon_closure(nfa.start))
+    Dstates = {start_dstate}
+    marked_states = set()
+    while True:
+        # while there is an unmarked state T in Dstates
+        unmarked_states = Dstates.difference(marked_states)
+        if len(unmarked_states) == 0:
+            break
+        T = unmarked_states.pop()
+        # mark T
+        marked_states.add(T)
+        # for each input symbol a
+        for a in nfa.alphabet:
+            assert isinstance(a, Element)
+            U = frozenset(AutomataUtils.epsilon_closure(AutomataUtils.move(T, a)))
+            if U not in Dstates:
+                Dstates.add(U)
+            Dtran[(T, a)] = U
+
+    count = 0
+    DFA_states = dict()
+    for dstate in Dstates:
+        ID = count
+        count += 1
+        accepting = any([state.accepting for state in dstate])
+        outgoing = None # We need to build all states before doing this
+        DFA_states[dstate] = DFAState(accepting=accepting, outgoing=outgoing, ID=ID)
+
+    # 2nd pass to add transitions based on Dtran
+    for dstate in Dstates:
+        DFA_state = DFA_states[dstate]
+        for element in nfa.alphabet:
+            target_dstate = Dtran[(dstate, element)]
+            target_DFA_state = DFA_states[target_dstate]
+            DFA_state.add_outgoing(Transition(element, target_DFA_state))
+
+    start_DFA_state = DFA_states[start_dstate]
+    return DFA(start_DFA_state, nfa.alphabet)
+
 def do_stuff():
-    expr = RegExpr.from_string('(a|b)*a')
+    expr = RegExpr.from_string('(a|b)*abb')
     nfa = RegExpr_to_NFA(expr)
     nfa.relabel()
     print(nfa)
     nfaSim = NFASimulator(nfa)
-    nfaSim.simulate(Element.element_list_from_string('aa'))
+    print(nfaSim.simulate(Element.element_list_from_string('aa')))
+    dfa = NFAtoDFA(nfa)
+    dfa.relabel()
+    print(dfa)
+    dfaSim = DFASimulator(dfa)
+    print(dfaSim.simulate(Element.element_list_from_string('aa')))
 
 
 if __name__ == '__main__':
