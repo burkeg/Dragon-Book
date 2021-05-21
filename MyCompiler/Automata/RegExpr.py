@@ -1,6 +1,8 @@
+import copy
 from enum import Enum
 
 from Automata import Element, Alphabet
+from SymbolTable import SymbolTable
 
 
 class Operation(Enum):
@@ -165,6 +167,16 @@ class RegExpr:
         self.alphabet = alphabet
         self.parse_tree = RegExprParseTree.build_from_expression(self.expression)
 
+    def __str__(self):
+        str_lst = []
+        for elem in self.expression:
+            if isinstance(elem.value, RegExpr):
+                str_lst.append(f'({str(elem)})')
+            else:
+                str_lst.append(str(elem))
+        return ''.join(str_lst)
+    __repr__ = __str__
+
     @staticmethod
     def from_string(string):
         expression = []
@@ -187,10 +199,54 @@ class RegExpr:
                 elements.append(term)
         return RegExpr(expression, Alphabet(elements))
 
+class RegularDefinition:
+    # Given an alphabet sigma of symbols d_1 to d_n, a regular definition is a sequence
+    # of definitions of the form:
+    #                       d_1 -> r_1
+    #                       d_2 -> r_2
+    #                         ...
+    #                       d_n -> r_n
+    # where:
+    # 1. Each d_i is a new symbol now in the alphabet and not the same as any
+    # other of the d's
+    # 2. Each r_i is a regular expression over the alphabet sigma union {d_1, d_2, ..., d_i-1}
+    # d_i is the reference to a RegExpr object
+    # r_i is the regular expression represented by that d_i
+    def __init__(self, regular_expressions):
+        self.regular_expressions = regular_expressions
+        self._verify()
+
+    def _verify(self):
+        assert all([isinstance(d_i, RegExpr) for d_i in self.regular_expressions])
+
+        # 1. Each d_i is a new symbol now in the alphabet and not the same as any
+        for i in range(len(self.regular_expressions)):
+            for j in range(i+1, len(self.regular_expressions)):
+                assert self.regular_expressions[i] != self.regular_expressions[j]
+
+        # 2. Each r_i is a regular expression over the alphabet sigma union {d_1, d_2, ..., d_i-1}
+        sigma = self.regular_expressions[0].alphabet
+        last_alphabet = copy.deepcopy(sigma)
+        assert isinstance(last_alphabet, Alphabet)
+        for i in range(1, len(self.regular_expressions)):
+            d_i = self.regular_expressions[i]
+            d_i_minus_1 = self.regular_expressions[i-1]
+            assert isinstance(d_i, RegExpr)
+            last_alphabet.elements.append(Element(d_i_minus_1))
+            # Enforce alphabet for d_i = sigma union {d_1, d_2, ..., d_i-1}
+            assert last_alphabet == d_i.alphabet
+
+
 
 def do_stuff():
-    expr = RegExpr.from_string('(a|b)*abb')
-    print(expr.parse_tree)
+    # A -> a*b
+    # B -> b a A
+    A = RegExpr.from_string('a*b')
+    before_add_B = RegExpr.from_string('ba')
+    B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
+    reg_def = RegularDefinition([A, B])
+    print(reg_def)
+    symbol_table = SymbolTable()
 
 
 if __name__ == '__main__':

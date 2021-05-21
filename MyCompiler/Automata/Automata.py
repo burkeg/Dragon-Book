@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 class Element:
     # This is some element of a language. It can be any arbitrary object,
     # not necessarily an ASCII character.
@@ -32,6 +34,7 @@ class EmptyExpression(Element):
 class Alphabet:
     # This describes all the elements of some alphabet sigma
     def __init__(self, elements):
+        assert isinstance(elements, Iterable)
         self.elements = elements
         for element in elements:
             assert isinstance(element, Element)
@@ -49,6 +52,22 @@ class Alphabet:
 
     def __iter__(self):
         return iter(self.elements)
+
+    def __len__(self):
+        return len(self.elements)
+
+    def __eq__(self, other):
+        if not isinstance(other, Alphabet):
+            return False
+        if len(self) !=  len(other):
+            return False
+        if self is other:
+            return True
+        for element in self:
+            if element not in other:
+                return False
+        return True
+
 
 
 class Transition:

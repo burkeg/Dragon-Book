@@ -1,6 +1,5 @@
 import re
 
-
 class GrammarSymbol:
     def __init__(self, string):
         self.string = string
@@ -24,7 +23,6 @@ class Terminal(GrammarSymbol):
 
 class Nonterminal(GrammarSymbol):
     pass
-
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):

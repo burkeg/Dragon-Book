@@ -15,6 +15,7 @@ class TestSimulator(TestCase):
         '(a|b)*abb': ['bb', 'aaabaaa', 'baaaab', 'ababa'],
         'a*b*a*b*': ['baba', 'bbbabbbaaa', 'ababa']
     }
+
     def test_simulate_NFA(self):
         for regex, test in TestSimulator.positive_tests.items():
             for testcase in test:
