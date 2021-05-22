@@ -13,6 +13,14 @@ class TestSimulator(TestCase):
             'a?': ['', 'a'],
             'a*b*a*b*': ['', 'a', 'aa', 'ab', 'ba', 'bbbbbaaaaaaabbbb', 'aaaabbaaaaab'],
             '[ab]': ['a', 'b'],
+            '[a-d]': ['a', 'b', 'c', 'd'],
+            '[A-D]': ['A', 'B', 'C', 'D'],
+            '[0-1]': ['0', '1'],
+            '[0-9]': ['0', '1', '9'],
+            '[a-bA-B]': ['a', 'b', 'A', 'B'],
+            '[-ab]': ['-', 'a', 'b'],
+            '[-a-bA-B]': ['a', 'b', 'A', 'B', '-'],
+            '[\[]': ['['],
         }
         negative_tests = {
             '(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],

@@ -167,7 +167,7 @@ class RegExprParseTree:
                     expression_list = []
                     for i, char in enumerate(char_set):
                         expression_list.append(Element(char))
-                        if i != len(char_list) - 1:
+                        if i != len(char_set) - 1:
                             expression_list.append(SpecialCharacter.UNION)
 
                     tree_inside_brackets =  RegExprParseTree.build_from_expression(expression_list)
