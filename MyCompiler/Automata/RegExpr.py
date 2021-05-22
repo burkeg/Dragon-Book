@@ -83,9 +83,9 @@ class RegExprParseTree:
         expression = RegExprParseTree.handle_identity(expression)
         expression = RegExprParseTree.handle_char_class(expression)
         expression = RegExprParseTree.handle_grouping(expression)
-        expression = RegExprParseTree.handle_quantifier(expression, Operation.KLEENE)
-        expression = RegExprParseTree.handle_quantifier(expression, Operation.PLUS)
-        expression = RegExprParseTree.handle_quantifier(expression, Operation.QUESTION)
+        expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.KLEENE)
+        expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.PLUS)
+        expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.QUESTION)
         expression = RegExprParseTree.handle_union(expression)
         expression = RegExprParseTree.handle_concat(expression)
 
@@ -167,16 +167,23 @@ class RegExprParseTree:
 
     @staticmethod
     def handle_quantifier(expression, quantifier):
-        assert isinstance(quantifier, Operation)
+        assert isinstance(quantifier, SpecialCharacter)
         if len(expression) == 0:
             return []
         if len(expression) == 1:
             return expression
 
         if expression[1] == quantifier:
+            operation = None
+            if quantifier == SpecialCharacter.KLEENE:
+                operation = Operation.KLEENE
+            elif quantifier == SpecialCharacter.PLUS:
+                operation = Operation.PLUS
+            elif quantifier == SpecialCharacter.QUESTION:
+                operation = Operation.QUESTION
             kleene_target = RegExprParseTree(
                 expression[0],
-                quantifier)
+                operation)
             return RegExprParseTree.handle_quantifier(
                 [kleene_target] + expression[2:], quantifier)
         else:
