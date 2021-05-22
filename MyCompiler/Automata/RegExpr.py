@@ -275,6 +275,10 @@ class RegExpr:
                 term_to_add = SpecialCharacter.UNION
             elif character == '*':
                 term_to_add = SpecialCharacter.KLEENE
+            elif character == '+':
+                term_to_add = SpecialCharacter.PLUS
+            elif character == '?':
+                term_to_add = SpecialCharacter.QUESTION
             else:
                 term_to_add = Element(character)
             expression.append(term_to_add)

@@ -157,9 +157,47 @@ def RegExpr_to_NFA(regexpr):
             start_state.add_outgoing(skip_transition)
             N_s.stop.add_outgoing(loop_transition)
             return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
+        # r = s+
+        elif parse_tree.operation == Operation.PLUS:
+            N_s = recursive_parse_tree_to_NFA(parse_tree.left)
+
+            end_state = NFAState('f', accepting=True)
+            end_transition = Transition(EmptyExpression, end_state)
+            N_s.stop.accepting = False
+            N_s.stop.add_outgoing(end_transition)
+
+            N_s_start_transition = Transition(EmptyExpression, N_s.start)
+            start_state = NFAState('i')
+            start_state.add_outgoing(N_s_start_transition)
+
+            # skip_transition = Transition(EmptyExpression, end_state)
+            loop_transition = Transition(EmptyExpression, N_s.start)
+            # start_state.add_outgoing(skip_transition)
+            N_s.stop.add_outgoing(loop_transition)
+            return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
+        # r = s?
+        elif parse_tree.operation == Operation.QUESTION:
+            N_s = recursive_parse_tree_to_NFA(parse_tree.left)
+
+            end_state = NFAState('f', accepting=True)
+            end_transition = Transition(EmptyExpression, end_state)
+            N_s.stop.accepting = False
+            N_s.stop.add_outgoing(end_transition)
+
+            N_s_start_transition = Transition(EmptyExpression, N_s.start)
+            start_state = NFAState('i')
+            start_state.add_outgoing(N_s_start_transition)
+
+            skip_transition = Transition(EmptyExpression, end_state)
+            # loop_transition = Transition(EmptyExpression, N_s.start)
+            start_state.add_outgoing(skip_transition)
+            # N_s.stop.add_outgoing(loop_transition)
+            return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
         # r = (s)
         elif parse_tree.operation == Operation.GROUP:
             return recursive_parse_tree_to_NFA(parse_tree.left)
+        else:
+            raise Exception('Hey dummy you forgot to implement the graph operation for an operator')
 
     return recursive_parse_tree_to_NFA(regexpr.parse_tree)
 

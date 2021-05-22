@@ -1,5 +1,7 @@
 from unittest import TestCase
 
+from RegExpr import RegularDefinition
+
 
 class TestRegularDefinition(TestCase):
     def test_from_string(self):
@@ -19,12 +21,10 @@ class TestRegularDefinition(TestCase):
             '2 definitions nesting':
                 'A a' + '\n' +
                 'B {A}b',
+            'kleene':
+                'A a' + '\n' +
+                'B {A}*b',
         }
-        # for regex, test in TestSimulator.positive_tests.items():
-        #     for testcase in test:
-        #         with self.subTest(regex=regex, testcase=testcase):
-        #             expr = RegExpr.from_string(regex)
-        #             nfa = RegExpr_to_NFA(expr)
-        #             dfa = NFAtoDFA(nfa)
-        #             dfaSim = DFASimulator(dfa)
-        #             assert dfaSim.simulate(Element.element_list_from_string(testcase))
+        for name, regular_definition in regular_definitions.items():
+            with self.subTest(name=name, regular_definition=regular_definition):
+                reg_def = RegularDefinition.from_string(regular_definition)
