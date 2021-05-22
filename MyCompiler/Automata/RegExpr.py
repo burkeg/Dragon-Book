@@ -290,7 +290,7 @@ class RegularDefinition:
             d_i = regular_expressions[i]
             d_i_minus_1 = regular_expressions[i-1]
             last_alphabet.elements.add(Element(d_i_minus_1))
-            d_i.alphabet = copy.copy(last_alphabet)
+            d_i.alphabet.elements = set([elem for elem in last_alphabet])
 
         return RegularDefinition(regular_expressions)
 
@@ -320,17 +320,25 @@ class RegularDefinition:
 
 
 def do_stuff():
-    before_add_B = RegExpr.from_string('{test}ba')
-    # A -> a*b
-    # B -> b a A
-    A = RegExpr.from_string('a*b')
-    before_add_B = RegExpr.from_string('ba')
-    B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements.union([Element(A)])))
-    reg_def = RegularDefinition([A, B])
-    print(reg_def)
+    # before_add_B = RegExpr.from_string('{test}ba')
+    # # A -> a*b
+    # # B -> b a A
+    # A = RegExpr.from_string('a*b')
+    # before_add_B = RegExpr.from_string('ba')
+    # B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements.union([Element(A)])))
+    # reg_def = RegularDefinition([A, B])
+    # print(reg_def)
+    # reg_def_digit = RegularDefinition.from_string(
+    #     'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
+    #     'digits {digit}{digit}*')
+    # print(reg_def_digit)
     reg_def2 = RegularDefinition.from_string(
+        'delim \ ' + '\n' +
+        'ws {delim}+' + '\n' +
+        'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' +
         'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
-        'digits {digit}{digit}*')
+        'id {letter}({letter}|{digit})*' + '\n' +
+        'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?' + '\n')
     print(reg_def2)
 
 
