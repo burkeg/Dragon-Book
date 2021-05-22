@@ -1,6 +1,6 @@
 from Automata import Element, Alphabet
 from RegExpr import RegularDefinition, RegExpr
-from SymbolTable import SymbolTable
+from SymbolTable import SymbolTable, SymbolTableManager
 from inspect import signature
 
 from Tokens.Tag import Tag
@@ -8,8 +8,8 @@ from Tokens.Token import Token
 
 
 class LexicalAnalyzer:
-    def __init__(self, symbol_table, regular_definition, translation_rules):
-        # symbol_table is an instance of the SymbolTable class
+    def __init__(self, symbol_table_manager, regular_definition, translation_rules):
+        # symbol_table is an instance of the SymbolTableManager class
         # regular_definition is an instance of the RegularDefinition class
         # translation_rules is a list of 2-tuples with the following format:
         #   pattern: Any Element d_i from the regular_definition or list of Element
@@ -20,10 +20,10 @@ class LexicalAnalyzer:
         #       Any side effects should be written to the Symbol table.
         #       You can also optionally return a token.
 
-        self.symbol_table = symbol_table
+        self.symbol_table_manager = symbol_table_manager
         self.regular_definition = regular_definition
         self.translation_rules = translation_rules
-        assert isinstance(self.symbol_table, SymbolTable)
+        assert isinstance(self.symbol_table_manager, SymbolTableManager)
         assert isinstance(self.regular_definition, RegularDefinition)
         assert isinstance(self.translation_rules, list)
         self._verify()
@@ -57,14 +57,13 @@ def do_stuff():
     B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
     reg_def = RegularDefinition([A, B])
     print(reg_def)
-    symbol_table = SymbolTable()
+    symbol_table_manager = SymbolTableManager()
 
     def B_action(symbol_table, text):
-        token
         return Token(Tag.ID)
 
     translation_rules = [(Element(B), B_action)]
-    lexer = LexicalAnalyzer(symbol_table, reg_def, translation_rules)
+    lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
     print(lexer)
 
 

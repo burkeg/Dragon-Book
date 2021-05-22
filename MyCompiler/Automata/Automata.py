@@ -34,7 +34,9 @@ class EmptyExpression(Element):
 class Alphabet:
     # This describes all the elements of some alphabet sigma
     def __init__(self, elements):
-        assert isinstance(elements, Iterable)
+        if isinstance(elements, list):
+            elements = set(elements)
+        assert isinstance(elements, set)
         self.elements = elements
         for element in elements:
             assert isinstance(element, Element)

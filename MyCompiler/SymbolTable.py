@@ -1,25 +1,21 @@
-class SymbolTableEntry:
-    def __init__(self, name, type):
-        self.name = name
-        self.type = type
-        pass
+from Tokens.Token import Token
 
+
+class SymbolTableEntry:
+    def __init__(self, token=None):
+        self.token = token
+        assert isinstance(token, Token)
+        token.symbol_table_entry = self
+
+class SymbolTableManager:
+    def __init__(self):
+        self.symbol_table_root = SymbolTable()
 
 class SymbolTable:
     def __init__(self, parent=None):
         self.parent = parent
-        self.symbols = dict()
+        self.symbols = []
 
-    def add_symbol(self, symbol):
-        assert isinstance(symbol, SymbolTableEntry)
-        if symbol.name in self.symbols:
-            raise Exception('Added same symbol twice in the same scope')
-
-        self.symbols[symbol.name] = symbol
-
-    def find_symbol(self, name):
-        curr_table = self
-        while curr_table is not None:
-            if name in self.symbols:
-                return self.symbols
-            curr_table = self.parent
+    def create_symbol(self, token):
+        assert isinstance(token, Token)
+        self.symbols.append(SymbolTableEntry())

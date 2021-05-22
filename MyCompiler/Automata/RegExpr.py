@@ -2,7 +2,6 @@ import copy
 from enum import Enum
 
 from Automata import Element, Alphabet
-from SymbolTable import SymbolTable
 
 
 class Operation(Enum):
@@ -180,9 +179,32 @@ class RegExpr:
     @staticmethod
     def from_string(string):
         expression = []
+        escape_char = '\\'
+        escaped = False
+        multicharacter_element = None
         for character in string:
             term_to_add = None
-            if character == '(':
+            if escaped:
+                if multicharacter_element is not None:
+                    multicharacter_element.append(character)
+                    escaped = False
+                    continue
+                else:
+                    term_to_add = Element(character)
+                    escaped = False
+            elif character == escape_char:  # At this point we know we weren't preceded by an escape char
+                escaped = True
+                continue
+            elif character == '{':
+                multicharacter_element = []
+                continue
+            elif character == '}':
+                term_to_add = Element('{' + ''.join(multicharacter_element) + '}')
+                multicharacter_element = None
+            elif multicharacter_element is not None:
+                multicharacter_element.append(character)
+                continue
+            elif character == '(':
                 term_to_add = SpecialCharacter.LEFT_PAREN
             elif character == ')':
                 term_to_add = SpecialCharacter.RIGHT_PAREN
@@ -193,6 +215,7 @@ class RegExpr:
             else:
                 term_to_add = Element(character)
             expression.append(term_to_add)
+            prev_char = character
         elements = []
         for term in expression:
             if isinstance(term, Element):
@@ -216,6 +239,61 @@ class RegularDefinition:
         self.regular_expressions = regular_expressions
         self._verify()
 
+    # Example input:
+    # 'digit 0|1|2|3|4|5|6|7|8|9\n' +
+    # 'digits {digit}{digit}*'
+    @staticmethod
+    def from_string( string):
+        assert isinstance(string, str)
+        regular_expressions = []
+        d_i_str_to_d_i = dict()
+        for line in string.splitlines():
+            split_on_spaces = line.split(' ')
+            d_i_str = f'{{{split_on_spaces[0]}}}'
+            r_i_str = ' '.join(split_on_spaces[1:])
+            d_i = RegExpr.from_string(r_i_str)
+            regular_expressions.append(d_i)
+            d_i_str_to_d_i[d_i_str] = d_i
+
+        # Do another pass to replace all the regex elements with their actual representations
+        for d_i in regular_expressions:
+            for term in d_i.expression:
+                if isinstance(term, SpecialCharacter):
+                    continue
+                assert isinstance(term, Element)
+                d_i_str = term.value
+                if d_i_sub := d_i_str_to_d_i.get(d_i_str):
+                    # replace for example {digit} into the Regex that digit represents.
+                    term.value = d_i_sub
+                    # This parse tree should contain only single character elements because we
+                    # are passing over d_i in order from least to greatest.
+
+                    # I know the alphabet is now inaccurate but I need to update it later
+                    # and I don't have enough information to do that here.
+
+        # Let's fix up the alphabets so they fit the requirements of a RegularDefinition
+        sigma = set()   # The base alphabet of all non-regex e
+        for d_i in regular_expressions:
+            for term in d_i.expression:
+                if isinstance(term, SpecialCharacter):
+                    continue
+                assert isinstance(term, Element)
+                if isinstance(term.value, str) and len(term.value) == 1:
+                    sigma.add(term)
+        sigma = Alphabet(sigma)
+
+        d_0 = regular_expressions[0]
+        d_0.alphabet = sigma
+        last_alphabet = copy.deepcopy(sigma)
+        assert isinstance(last_alphabet, Alphabet)
+        for i in range(1, len(regular_expressions)):
+            d_i = regular_expressions[i]
+            d_i_minus_1 = regular_expressions[i-1]
+            last_alphabet.elements.add(Element(d_i_minus_1))
+            d_i.alphabet = copy.copy(last_alphabet)
+
+        return RegularDefinition(regular_expressions)
+
     def _verify(self):
         assert all([isinstance(d_i, RegExpr) for d_i in self.regular_expressions])
 
@@ -232,21 +310,28 @@ class RegularDefinition:
             d_i = self.regular_expressions[i]
             d_i_minus_1 = self.regular_expressions[i-1]
             assert isinstance(d_i, RegExpr)
-            last_alphabet.elements.append(Element(d_i_minus_1))
+            last_alphabet.elements.add(Element(d_i_minus_1))
             # Enforce alphabet for d_i = sigma union {d_1, d_2, ..., d_i-1}
             assert last_alphabet == d_i.alphabet
+
+    def match(self, element_generator):
+        pass
 
 
 
 def do_stuff():
+    before_add_B = RegExpr.from_string('{test}ba')
     # A -> a*b
     # B -> b a A
     A = RegExpr.from_string('a*b')
     before_add_B = RegExpr.from_string('ba')
-    B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
+    B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements.union([Element(A)])))
     reg_def = RegularDefinition([A, B])
     print(reg_def)
-    symbol_table = SymbolTable()
+    reg_def2 = RegularDefinition.from_string(
+        'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
+        'digits {digit}{digit}*')
+    print(reg_def2)
 
 
 if __name__ == '__main__':
