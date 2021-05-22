@@ -10,6 +10,9 @@ class Operation(Enum):
     KLEENE = 3
     GROUP = 4
     IDENTITY = 5
+    PLUS = 6
+    QUESTION = 7
+    CHAR_CLASS = 8
 
 
 class SpecialCharacter(Enum):
@@ -18,6 +21,10 @@ class SpecialCharacter(Enum):
     UNION = 3
     KLEENE = 4
     EMPTY = 5
+    PLUS = 6
+    QUESTION = 7
+    LEFT_SQUARE_BRACKET = 8
+    RIGHT_SQUARE_BRACKET = 9
 
     def __str__(self):
         if self == SpecialCharacter.LEFT_PAREN:
@@ -30,6 +37,14 @@ class SpecialCharacter(Enum):
             return '*'
         elif self == SpecialCharacter.EMPTY:
             return 'epsilon'
+        elif self == SpecialCharacter.PLUS:
+            return '+'
+        elif self == SpecialCharacter.QUESTION:
+            return '?'
+        elif self == SpecialCharacter.LEFT_SQUARE_BRACKET:
+            return '['
+        elif self == SpecialCharacter.RIGHT_SQUARE_BRACKET:
+            return ']'
         raise Exception('Hey dummy you forgot to add a string representation')
     __repr__ = __str__
 
@@ -56,12 +71,21 @@ class RegExprParseTree:
             assert isinstance(self.left, RegExprParseTree)
         elif self.operation == Operation.IDENTITY:
             assert isinstance(self.left, Element)
+        elif self.operation == Operation.PLUS:
+            assert isinstance(self.left, RegExprParseTree)
+        elif self.operation == Operation.QUESTION:
+            assert isinstance(self.left, RegExprParseTree)
+        elif self.operation == Operation.CHAR_CLASS:
+            assert isinstance(self.left, RegExprParseTree)
 
     @staticmethod
     def build_from_expression(expression):
         expression = RegExprParseTree.handle_identity(expression)
+        expression = RegExprParseTree.handle_char_class(expression)
         expression = RegExprParseTree.handle_grouping(expression)
-        expression = RegExprParseTree.handle_kleene(expression)
+        expression = RegExprParseTree.handle_quantifier(expression, Operation.KLEENE)
+        expression = RegExprParseTree.handle_quantifier(expression, Operation.PLUS)
+        expression = RegExprParseTree.handle_quantifier(expression, Operation.QUESTION)
         expression = RegExprParseTree.handle_union(expression)
         expression = RegExprParseTree.handle_concat(expression)
 
@@ -80,6 +104,37 @@ class RegExprParseTree:
             else:
                 new_expression.append(term)
         return new_expression
+
+    @staticmethod
+    def handle_char_class(expression):
+        if len(expression) == 0:
+            return []
+        if len(expression) == 1:
+            return expression
+
+        if expression[0] == SpecialCharacter.LEFT_SQUARE_BRACKET:
+            # Search for the matching close parenthesis and recursively build a tree
+            paren_cnt = 1
+            for i, term in enumerate(expression[1:]):
+                if term == SpecialCharacter.LEFT_SQUARE_BRACKET:
+                    paren_cnt += 1
+                elif term == SpecialCharacter.RIGHT_SQUARE_BRACKET:
+                    paren_cnt -= 1
+
+                if paren_cnt == 0:
+                    # We found the matching close parenthesis
+                    expr_inside_parens = expression[1:(i+1)]
+                    expr_outside_parens = expression[i+2:]
+                    # TODO
+                    # no need for recursive call here we can fully handle this in 1 pass.
+                    # tree_inside_parens = RegExprParseTree(
+                    #     RegExprParseTree.build_from_expression(expr_inside_parens),
+                    #     Operation.CHAR_CLASS)
+                    # return RegExprParseTree.handle_grouping(
+                    #     [tree_inside_parens] + expr_outside_parens)
+        else:
+            return [expression[0]] + \
+                   RegExprParseTree.handle_grouping(expression[1:])
 
     @staticmethod
     def handle_grouping(expression):
@@ -111,21 +166,22 @@ class RegExprParseTree:
                    RegExprParseTree.handle_grouping(expression[1:])
 
     @staticmethod
-    def handle_kleene(expression):
+    def handle_quantifier(expression, quantifier):
+        assert isinstance(quantifier, Operation)
         if len(expression) == 0:
             return []
         if len(expression) == 1:
             return expression
 
-        if expression[1] == SpecialCharacter.KLEENE:
+        if expression[1] == quantifier:
             kleene_target = RegExprParseTree(
                 expression[0],
-                Operation.KLEENE)
-            return RegExprParseTree.handle_kleene(
-                [kleene_target] + expression[2:])
+                quantifier)
+            return RegExprParseTree.handle_quantifier(
+                [kleene_target] + expression[2:], quantifier)
         else:
             return [expression[0]] + \
-                   RegExprParseTree.handle_kleene(expression[1:])
+                   RegExprParseTree.handle_quantifier(expression[1:], quantifier)
 
     @staticmethod
     def handle_union(expression):
