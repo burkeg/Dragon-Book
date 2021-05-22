@@ -11,7 +11,8 @@ class TestSimulator(TestCase):
             'a*': ['', 'a', 'aa', 'aaaaaaaaa'],
             'a+': ['a', 'aa', 'aaaaaaaaa'],
             'a?': ['', 'a'],
-            'a*b*a*b*': ['', 'a', 'aa', 'ab', 'ba', 'bbbbbaaaaaaabbbb', 'aaaabbaaaaab']
+            'a*b*a*b*': ['', 'a', 'aa', 'ab', 'ba', 'bbbbbaaaaaaabbbb', 'aaaabbaaaaab'],
+            '[ab]': ['a', 'b'],
         }
         negative_tests = {
             '(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],
@@ -19,6 +20,7 @@ class TestSimulator(TestCase):
             'a*b*a*b*': ['baba', 'bbbabbbaaa', 'ababa'],
             'a+': [''],
             'a?': ['aa'],
+            '[ab]': [''],
         }
 
         with self.subTest(simulator='NFA'):

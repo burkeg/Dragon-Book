@@ -106,6 +106,19 @@ class RegExprParseTree:
         return new_expression
 
     @staticmethod
+    def range_over_chars(start, stop):
+        # Either ranging over letters of numbers
+        assert isinstance(start, str), len(start) == 1
+        assert isinstance(stop, str), len(stop) == 1
+        assert ord(start) <= ord(stop)
+        if start.isdigit() and stop.isdigit() or \
+            start.islower() and stop.islower() or \
+            start.isupper() and stop.isupper():
+            return set([chr(ASCII_num) for ASCII_num in range(ord(start), ord(stop) + 1)])
+        else:
+            raise Exception('Character class must be across letters of the same casing or digits.')
+
+    @staticmethod
     def handle_char_class(expression):
         if len(expression) == 0:
             return []
@@ -122,16 +135,45 @@ class RegExprParseTree:
                     paren_cnt -= 1
 
                 if paren_cnt == 0:
-                    # We found the matching close parenthesis
-                    expr_inside_parens = expression[1:(i+1)]
-                    expr_outside_parens = expression[i+2:]
-                    # TODO
-                    # no need for recursive call here we can fully handle this in 1 pass.
-                    # tree_inside_parens = RegExprParseTree(
-                    #     RegExprParseTree.build_from_expression(expr_inside_parens),
-                    #     Operation.CHAR_CLASS)
-                    # return RegExprParseTree.handle_grouping(
-                    #     [tree_inside_parens] + expr_outside_parens)
+                    # We found the matching close square bracket
+                    expressions_inside_parens = expression[1:(i+1)]
+                    expressions_outside_parens = expression[i+2:]
+
+                    char_list = []
+                    for expression_inside_parens in expressions_inside_parens:
+                        error_str = 'Character classes should only operate on single character strings.'
+                        assert isinstance(expression_inside_parens, RegExprParseTree), error_str
+                        assert expression_inside_parens.operation == Operation.IDENTITY, error_str
+                        elem = expression_inside_parens.left
+                        assert isinstance(elem, Element), error_str
+                        assert isinstance(elem.value, str), error_str
+                        assert len(elem.value) == 1, error_str
+                        char_list.append(elem.value)
+
+                    # look for a minus sign to indicate a range of characters
+                    char_set = set()
+                    for i, char in enumerate(char_list):
+                        if char == '-':
+                            if i == 0 or i == len(char_list) - 1:
+                                # If we see the range indicator at the start or end it's a literal '-'
+                                char_set.add(char)
+                            else:
+                                range_of_chars = RegExprParseTree.range_over_chars(char_list[i-1], char_list[i+1])
+                                char_set.update(range_of_chars)
+                        else:
+                            char_set.add(char)
+
+                    # now we have all the characters in this character class
+                    expression_list = []
+                    for i, char in enumerate(char_set):
+                        expression_list.append(Element(char))
+                        if i != len(char_list) - 1:
+                            expression_list.append(SpecialCharacter.UNION)
+
+                    tree_inside_brackets =  RegExprParseTree.build_from_expression(expression_list)
+
+                    return RegExprParseTree.handle_grouping(
+                        [tree_inside_brackets] + expressions_outside_parens)
         else:
             return [expression[0]] + \
                    RegExprParseTree.handle_grouping(expression[1:])
@@ -154,13 +196,13 @@ class RegExprParseTree:
 
                 if paren_cnt == 0:
                     # We found the matching close parenthesis
-                    expr_inside_parens = expression[1:(i+1)]
-                    expr_outside_parens = expression[i+2:]
+                    expressions_inside_parens = expression[1:(i+1)]
+                    expressions_outside_parens = expression[i+2:]
                     tree_inside_parens = RegExprParseTree(
-                        RegExprParseTree.build_from_expression(expr_inside_parens),
+                        RegExprParseTree.build_from_expression(expressions_inside_parens),
                         Operation.GROUP)
                     return RegExprParseTree.handle_grouping(
-                        [tree_inside_parens] + expr_outside_parens)
+                        [tree_inside_parens] + expressions_outside_parens)
         else:
             return [expression[0]] + \
                    RegExprParseTree.handle_grouping(expression[1:])
@@ -279,6 +321,10 @@ class RegExpr:
                 term_to_add = SpecialCharacter.PLUS
             elif character == '?':
                 term_to_add = SpecialCharacter.QUESTION
+            elif character == '[':
+                term_to_add = SpecialCharacter.LEFT_SQUARE_BRACKET
+            elif character == ']':
+                term_to_add = SpecialCharacter.RIGHT_SQUARE_BRACKET
             else:
                 term_to_add = Element(character)
             expression.append(term_to_add)
