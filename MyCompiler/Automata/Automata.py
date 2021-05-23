@@ -33,6 +33,11 @@ class EmptyExpression(Element):
     def __init__(self):
         super().__init__(None)
 
+# Should be produced whenever an impossible pattern is encountered.
+class UnmatchableElement(Element):
+    def __init__(self):
+        super().__init__(None)
+
 class EscapedCharElement(Element):
     def __init__(self, special_escaped_character):
         assert isinstance(special_escaped_character, SpecialEscapedCharacter)
@@ -216,8 +221,13 @@ class NFAOneStartOneEnd(NFA):
         element = EmptyExpression() if element is None else element
         assert isinstance(element, Element)
         end_state = NFAState('f', accepting=True)
-        transition_to_end = Transition(element, end_state)
-        start_state = NFAState('i', outgoing={element: [transition_to_end]})
+        if not isinstance(element, UnmatchableElement):
+            transition_to_end = Transition(element, end_state)
+            start_state = NFAState('i', outgoing={element: [transition_to_end]})
+        else:
+            # In order to create an ummatchable element we'll make this basis disjoint so it's
+            # impossible to reach an end state unless we can find a new path through UNION, KLEENE, etc.
+            start_state = NFAState('i')
         return NFAOneStartOneEnd(start_state, Alphabet([element]), end_state)
 
 

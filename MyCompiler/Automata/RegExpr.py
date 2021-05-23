@@ -1,6 +1,7 @@
 import copy
+import string
 
-from Automata import Element, Alphabet, EscapedCharElement, CharClassElement
+from Automata import Element, Alphabet, EscapedCharElement, CharClassElement, UnmatchableElement
 from Enums import SpecialCharacter, Operation, SpecialEscapedCharacter, ShorthandCharacterClass
 
 
@@ -95,6 +96,11 @@ class RegExprParseTree:
                     expressions_inside_parens = expression[1:(i+1)]
                     expressions_outside_parens = expression[i+2:]
 
+                    if len(expressions_inside_parens) == 0:
+                        return [UnmatchableElement()]
+
+                    is_negative = False
+
                     char_list = []
                     for expression_inside_parens in expressions_inside_parens:
                         error_str = 'Character classes should only operate on single character ' \
@@ -114,6 +120,11 @@ class RegExprParseTree:
 
                     # look for a minus sign to indicate a range of characters
                     char_set = set()
+
+                    if char_list[0] == '^':
+                        char_list = char_list[1:]
+                        is_negative = True
+
                     for idx, char in enumerate(char_list):
                         if isinstance(char, ShorthandCharacterClass):
                             char_set.update(char.to_char_set())
@@ -131,10 +142,16 @@ class RegExprParseTree:
                             char_set.add(char)
 
                     # now we have all the characters in this character class
+                    if is_negative:
+                        char_set = set(string.printable).difference(char_set)
+
+                    if len(char_set) == 0:
+                        return [UnmatchableElement()]
+
                     expression_list = []
-                    for i, char in enumerate(char_set):
+                    for idx, char in enumerate(char_set):
                         expression_list.append(Element(char))
-                        if i != len(char_set) - 1:
+                        if idx != len(char_set) - 1:
                             expression_list.append(SpecialCharacter.UNION)
 
                     tree_inside_brackets =  RegExprParseTree.build_from_expression(expression_list)
@@ -160,11 +177,17 @@ class RegExprParseTree:
                         raise Exception('Unknown escaped special character')
                 elif isinstance(elem, CharClassElement):
                     had_minus = False
+                    had_caret = False
                     char_set = elem.value.to_char_set()
                     if '-' in char_set:
                         had_minus = True
                         char_set.remove('-')
+                    if '^' in char_set:
+                        had_caret = True
+                        char_set.remove('^')
                     char_only = [Element(char) for char in char_set]
+                    if had_caret:
+                        char_only.append(Element('^'))
                     if had_minus:
                         char_only.append(Element('-'))
                     elements = [SpecialCharacter.LEFT_SQUARE_BRACKET] + \

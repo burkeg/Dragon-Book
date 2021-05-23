@@ -35,8 +35,8 @@ class TestSimulator(TestCase):
             r'[\d]': ['0', '1', '9'],
             r'[\D]': ['a', 'b', ' '],
             r'[\D\d]': ['a', 'b', ' ', '1'],
-            r'[\S]': ['a', 'b', ' ', '1'],
-
+            r'[\S]': ['a', 'b', '1'],
+            r'[^a-c^]': ['1', ' ', '\n', 'Z'],
         }
         negative_tests = {
             r'(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],
@@ -45,6 +45,9 @@ class TestSimulator(TestCase):
             r'a+': [''],
             r'a?': ['aa'],
             r'[ab]': [''],
+            r'[^\S\s]': [''],
+            r'[]': ['literally anything'],
+            r'[^a-c^]': ['a', 'b', 'c', '^'],
         }
 
         with self.subTest(simulator='NFA'):

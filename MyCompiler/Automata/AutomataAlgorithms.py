@@ -95,7 +95,11 @@ class DFASimulator(Simulator):
         element_gen = self.next_element()
         c = next(element_gen)
         while not isinstance(c, EOF):
-            s = AutomataUtils.epsilon_closure(AutomataUtils.move({s}, c)).pop()
+            S = AutomataUtils.epsilon_closure(AutomataUtils.move({s}, c))
+            if len(S) == 0:
+                # We hit a state with a transition that is unmatchable.
+                return False
+            s = S.pop()
             c = next(element_gen)
         return s in F
 
