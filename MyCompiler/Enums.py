@@ -55,6 +55,12 @@ class SpecialCharacter(Enum):
                 return r'\d'
             elif self == SpecialCharacter.WHITESPACE:
                 return r'\s'
+            elif self == SpecialCharacter.NEGATED_WORD:
+                return r'\W'
+            elif self == SpecialCharacter.NEGATED_DIGIT:
+                return r'\D'
+            elif self == SpecialCharacter.NEGATED_WHITESPACE:
+                return r'\S'
             raise Exception('Hey dummy you forgot to add a string representation')
     __repr__ = __str__
 

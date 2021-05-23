@@ -302,6 +302,12 @@ class RegExpr:
                         term_to_add = CharClassElement(ShorthandCharacterClass.DIGIT)
                     elif character == 's':
                         term_to_add = CharClassElement(ShorthandCharacterClass.WHITESPACE)
+                    elif character == 'W':
+                        term_to_add = CharClassElement(ShorthandCharacterClass.NEGATED_WORD)
+                    elif character == 'D':
+                        term_to_add = CharClassElement(ShorthandCharacterClass.NEGATED_DIGIT)
+                    elif character == 'S':
+                        term_to_add = CharClassElement(ShorthandCharacterClass.NEGATED_WHITESPACE)
                     elif character == 't':
                         term_to_add = EscapedCharElement(SpecialEscapedCharacter.TAB)
                     elif character == 'n':
