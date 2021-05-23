@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from Enums import SpecialEscapedCharacter
+from Enums import SpecialEscapedCharacter, ShorthandCharacterClass
 
 
 class Element:
@@ -37,6 +37,11 @@ class EscapedCharElement(Element):
     def __init__(self, special_escaped_character):
         assert isinstance(special_escaped_character, SpecialEscapedCharacter)
         super().__init__(special_escaped_character)
+
+class CharClassElement(Element):
+    def __init__(self, char_class):
+        assert isinstance(char_class, ShorthandCharacterClass)
+        super().__init__(char_class)
 
 
 class Alphabet:

@@ -1,8 +1,7 @@
 import copy
 
-from Automata import Element, Alphabet, EscapedCharElement
-from Enums import SpecialCharacter, Operation, SpecialEscapedCharacter
-
+from Automata import Element, Alphabet, EscapedCharElement, CharClassElement
+from Enums import SpecialCharacter, Operation, SpecialEscapedCharacter, ShorthandCharacterClass
 
 
 class RegExprParseTree:
@@ -109,21 +108,24 @@ class RegExprParseTree:
                         elem = expression_inside_parens.left
                         assert isinstance(elem, Element), error_str
                         assert isinstance(elem, EscapedCharElement) or \
+                            isinstance(elem, CharClassElement) or \
                                (isinstance(elem.value, str) and len(elem.value) == 1), error_str
                         char_list.append(elem.value)
 
                     # look for a minus sign to indicate a range of characters
                     char_set = set()
-                    for i, char in enumerate(char_list):
-                        if isinstance(char, SpecialEscapedCharacter):
+                    for idx, char in enumerate(char_list):
+                        if isinstance(char, ShorthandCharacterClass):
                             char_set.update(char.to_char_set())
                             continue
+                        elif isinstance(char, SpecialEscapedCharacter):
+                            char_set.add(str(char))
                         if char == '-':
-                            if i == 0 or i == len(char_list) - 1:
+                            if idx == 0 or idx == len(char_list) - 1:
                                 # If we see the range indicator at the start or end it's a literal '-'
                                 char_set.add(char)
                             else:
-                                range_of_chars = RegExprParseTree.range_over_chars(char_list[i-1], char_list[i+1])
+                                range_of_chars = RegExprParseTree.range_over_chars(char_list[idx-1], char_list[idx+1])
                                 char_set.update(range_of_chars)
                         else:
                             char_set.add(char)
@@ -150,24 +152,30 @@ class RegExprParseTree:
             if isinstance(term, RegExprParseTree) and term.operation == Operation.IDENTITY:
                 elem = term.left
                 if isinstance(elem, EscapedCharElement):
-                    if elem.value == SpecialEscapedCharacter.WORD:
-                        new_expression.append(RegExpr.from_string('[a-zA-Z_]'))
-                    elif elem.value == SpecialEscapedCharacter.DIGIT:
-                        new_expression.append(RegExpr.from_string('[0-9]').parse_tree)
-                    elif elem.value == SpecialEscapedCharacter.WHITESPACE:
-                        new_expression.append(RegExpr.from_string('[ \t\n]').parse_tree)
-                    elif elem.value == SpecialEscapedCharacter.TAB:
+                    if elem.value == SpecialEscapedCharacter.TAB:
                         new_expression.append(Element('\t'))
                     elif elem.value == SpecialEscapedCharacter.NEWLINE:
                         new_expression.append(Element('\n'))
                     else:
                         raise Exception('Unknown escaped special character')
+                elif isinstance(elem, CharClassElement):
+                    had_minus = False
+                    char_set = elem.value.to_char_set()
+                    if '-' in char_set:
+                        had_minus = True
+                        char_set.remove('-')
+                    char_only = [Element(char) for char in char_set]
+                    if had_minus:
+                        char_only.append(Element('-'))
+                    elements = [SpecialCharacter.LEFT_SQUARE_BRACKET] + \
+                               char_only + \
+                               [SpecialCharacter.RIGHT_SQUARE_BRACKET]
+                    new_expression.append(RegExprParseTree.build_from_expression(elements))
                 else:
                     new_expression.append(RegExprParseTree(elem, Operation.IDENTITY))
             else:
                 new_expression.append(term)
         return RegExprParseTree.handle_identity(new_expression)
-        return new_expression
 
     @staticmethod
     def handle_grouping(expression):
@@ -257,7 +265,9 @@ class RegExpr:
     def __init__(self, expression, alphabet):
         assert isinstance(alphabet, Alphabet)
         for term in expression:
-            assert isinstance(term, Element) or isinstance(term, SpecialCharacter)
+            assert isinstance(term, Element) or \
+                   isinstance(term, SpecialCharacter) or \
+                   isinstance(term, ShorthandCharacterClass)
         self.expression = expression
         self.alphabet = alphabet
         self.parse_tree = RegExprParseTree.build_from_expression(self.expression)
@@ -287,11 +297,11 @@ class RegExpr:
                     continue
                 else:
                     if character == 'w':
-                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.WORD)
+                        term_to_add = CharClassElement(ShorthandCharacterClass.WORD)
                     elif character == 'd':
-                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.DIGIT)
+                        term_to_add = CharClassElement(ShorthandCharacterClass.DIGIT)
                     elif character == 's':
-                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.WHITESPACE)
+                        term_to_add = CharClassElement(ShorthandCharacterClass.WHITESPACE)
                     elif character == 't':
                         term_to_add = EscapedCharElement(SpecialEscapedCharacter.TAB)
                     elif character == 'n':
@@ -328,7 +338,7 @@ class RegExpr:
             elif character == ']':
                 term_to_add = SpecialCharacter.RIGHT_SQUARE_BRACKET
             elif character == '.':
-                term_to_add = SpecialCharacter.DOT
+                term_to_add = CharClassElement(ShorthandCharacterClass.DOT)
             else:
                 term_to_add = Element(character)
             expression.append(term_to_add)
@@ -437,26 +447,7 @@ class RegularDefinition:
 
 
 def do_stuff():
-    # before_add_B = RegExpr.from_string('{test}ba')
-    # # A -> a*b
-    # # B -> b a A
-    # A = RegExpr.from_string('a*b')
-    # before_add_B = RegExpr.from_string('ba')
-    # B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements.union([Element(A)])))
-    # reg_def = RegularDefinition([A, B])
-    # print(reg_def)
-    # reg_def_digit = RegularDefinition.from_string(
-    #     'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
-    #     'digits {digit}{digit}*')
-    # print(reg_def_digit)
-    reg_def2 = RegularDefinition.from_string(
-        'delim \ ' + '\n' +
-        'ws {delim}+' + '\n' +
-        'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' +
-        'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
-        'id {letter}({letter}|{digit})*' + '\n' +
-        'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?' + '\n')
-    print(reg_def2)
+    RegExpr.from_string('\d')
 
 
 if __name__ == '__main__':
