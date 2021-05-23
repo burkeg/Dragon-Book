@@ -1,4 +1,4 @@
-from Tokens import Tag
+from Enums import Tag
 
 
 class Token:

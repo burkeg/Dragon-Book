@@ -1,5 +1,8 @@
 from collections.abc import Iterable
 
+from Enums import SpecialEscapedCharacter
+
+
 class Element:
     # This is some element of a language. It can be any arbitrary object,
     # not necessarily an ASCII character.
@@ -29,6 +32,11 @@ class Element:
 class EmptyExpression(Element):
     def __init__(self):
         super().__init__(None)
+
+class EscapedCharElement(Element):
+    def __init__(self, special_escaped_character):
+        assert isinstance(special_escaped_character, SpecialEscapedCharacter)
+        super().__init__(special_escaped_character)
 
 
 class Alphabet:

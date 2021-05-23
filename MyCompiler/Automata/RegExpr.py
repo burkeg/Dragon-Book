@@ -1,52 +1,8 @@
 import copy
-from enum import Enum
 
-from Automata import Element, Alphabet
+from Automata import Element, Alphabet, EscapedCharElement
+from Enums import SpecialCharacter, Operation, SpecialEscapedCharacter
 
-
-class Operation(Enum):
-    CONCAT = 1
-    UNION = 2
-    KLEENE = 3
-    GROUP = 4
-    IDENTITY = 5
-    PLUS = 6
-    QUESTION = 7
-    CHAR_CLASS = 8
-
-
-class SpecialCharacter(Enum):
-    LEFT_PAREN = 1
-    RIGHT_PAREN = 2
-    UNION = 3
-    KLEENE = 4
-    EMPTY = 5
-    PLUS = 6
-    QUESTION = 7
-    LEFT_SQUARE_BRACKET = 8
-    RIGHT_SQUARE_BRACKET = 9
-
-    def __str__(self):
-        if self == SpecialCharacter.LEFT_PAREN:
-            return '('
-        elif self == SpecialCharacter.RIGHT_PAREN:
-            return ')'
-        elif self == SpecialCharacter.UNION:
-            return '|'
-        elif self == SpecialCharacter.KLEENE:
-            return '*'
-        elif self == SpecialCharacter.EMPTY:
-            return 'epsilon'
-        elif self == SpecialCharacter.PLUS:
-            return '+'
-        elif self == SpecialCharacter.QUESTION:
-            return '?'
-        elif self == SpecialCharacter.LEFT_SQUARE_BRACKET:
-            return '['
-        elif self == SpecialCharacter.RIGHT_SQUARE_BRACKET:
-            return ']'
-        raise Exception('Hey dummy you forgot to add a string representation')
-    __repr__ = __str__
 
 
 class RegExprParseTree:
@@ -82,6 +38,7 @@ class RegExprParseTree:
     def build_from_expression(expression):
         expression = RegExprParseTree.handle_identity(expression)
         expression = RegExprParseTree.handle_char_class(expression)
+        expression = RegExprParseTree.handle_escaped_special_chars(expression)
         expression = RegExprParseTree.handle_grouping(expression)
         expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.KLEENE)
         expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.PLUS)
@@ -141,18 +98,26 @@ class RegExprParseTree:
 
                     char_list = []
                     for expression_inside_parens in expressions_inside_parens:
-                        error_str = 'Character classes should only operate on single character strings.'
+                        error_str = 'Character classes should only operate on single character ' \
+                                    'strings or shorthand classes.'
+                        if isinstance(expression_inside_parens, SpecialCharacter):
+                            # Special characters have their meaning ignored inside character classes
+                            char_list.append(str(expression_inside_parens))
+                            continue
                         assert isinstance(expression_inside_parens, RegExprParseTree), error_str
                         assert expression_inside_parens.operation == Operation.IDENTITY, error_str
                         elem = expression_inside_parens.left
                         assert isinstance(elem, Element), error_str
-                        assert isinstance(elem.value, str), error_str
-                        assert len(elem.value) == 1, error_str
+                        assert isinstance(elem, EscapedCharElement) or \
+                               (isinstance(elem.value, str) and len(elem.value) == 1), error_str
                         char_list.append(elem.value)
 
                     # look for a minus sign to indicate a range of characters
                     char_set = set()
                     for i, char in enumerate(char_list):
+                        if isinstance(char, SpecialEscapedCharacter):
+                            char_set.update(char.to_char_set())
+                            continue
                         if char == '-':
                             if i == 0 or i == len(char_list) - 1:
                                 # If we see the range indicator at the start or end it's a literal '-'
@@ -172,11 +137,37 @@ class RegExprParseTree:
 
                     tree_inside_brackets =  RegExprParseTree.build_from_expression(expression_list)
 
-                    return RegExprParseTree.handle_grouping(
+                    return RegExprParseTree.handle_char_class(
                         [tree_inside_brackets] + expressions_outside_parens)
         else:
             return [expression[0]] + \
-                   RegExprParseTree.handle_grouping(expression[1:])
+                   RegExprParseTree.handle_char_class(expression[1:])
+
+    @staticmethod
+    def handle_escaped_special_chars(expression):
+        new_expression = []
+        for term in expression:
+            if isinstance(term, RegExprParseTree) and term.operation == Operation.IDENTITY:
+                elem = term.left
+                if isinstance(elem, EscapedCharElement):
+                    if elem.value == SpecialEscapedCharacter.WORD:
+                        new_expression.append(RegExpr.from_string('[a-zA-Z_]'))
+                    elif elem.value == SpecialEscapedCharacter.DIGIT:
+                        new_expression.append(RegExpr.from_string('[0-9]').parse_tree)
+                    elif elem.value == SpecialEscapedCharacter.WHITESPACE:
+                        new_expression.append(RegExpr.from_string('[ \t\n]').parse_tree)
+                    elif elem.value == SpecialEscapedCharacter.TAB:
+                        new_expression.append(Element('\t'))
+                    elif elem.value == SpecialEscapedCharacter.NEWLINE:
+                        new_expression.append(Element('\n'))
+                    else:
+                        raise Exception('Unknown escaped special character')
+                else:
+                    new_expression.append(RegExprParseTree(elem, Operation.IDENTITY))
+            else:
+                new_expression.append(term)
+        return RegExprParseTree.handle_identity(new_expression)
+        return new_expression
 
     @staticmethod
     def handle_grouping(expression):
@@ -295,7 +286,18 @@ class RegExpr:
                     escaped = False
                     continue
                 else:
-                    term_to_add = Element(character)
+                    if character == 'w':
+                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.WORD)
+                    elif character == 'd':
+                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.DIGIT)
+                    elif character == 's':
+                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.WHITESPACE)
+                    elif character == 't':
+                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.TAB)
+                    elif character == 'n':
+                        term_to_add = EscapedCharElement(SpecialEscapedCharacter.NEWLINE)
+                    else:
+                        term_to_add = Element(character)
                     escaped = False
             elif character == escape_char:  # At this point we know we weren't preceded by an escape char
                 escaped = True
@@ -325,6 +327,8 @@ class RegExpr:
                 term_to_add = SpecialCharacter.LEFT_SQUARE_BRACKET
             elif character == ']':
                 term_to_add = SpecialCharacter.RIGHT_SQUARE_BRACKET
+            elif character == '.':
+                term_to_add = SpecialCharacter.DOT
             else:
                 term_to_add = Element(character)
             expression.append(term_to_add)

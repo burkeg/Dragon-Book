@@ -1,5 +1,5 @@
 import Token
-from Tokens.Tag import Tag
+from Enums import Tag
 
 
 class IDToken(Token):
