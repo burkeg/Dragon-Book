@@ -1,3 +1,4 @@
+import math
 from collections.abc import Iterable
 
 from Enums import SpecialEscapedCharacter, ShorthandCharacterClass
@@ -47,6 +48,21 @@ class CharClassElement(Element):
     def __init__(self, char_class):
         assert isinstance(char_class, ShorthandCharacterClass)
         super().__init__(char_class)
+
+class QuantifierElement(Element):
+    def __init__(self, start, stop):
+        self.start = start
+        self.stop = stop
+        assert isinstance(start, int)
+        assert isinstance(stop, int) or stop == math.inf
+        value = f'{{{start},{stop}}}'
+        if start == 0 and stop == math.inf:
+            value = '*'
+        elif start == 1 and stop == math.inf:
+            value = '+'
+        if start == 0 and stop == 1:
+            value = '?'
+        super().__init__(value)
 
 
 class Alphabet:
@@ -207,6 +223,11 @@ class NFA(Automata):
         transition_to_end = Transition(element, end_state)
         start_state = NFAState('i', outgoing={element: [transition_to_end]})
         return NFA(start_state, Alphabet([element]))
+
+    def make_copy(self):
+        # Not quite a shallow copy, not quite a deep copy. I want to copy the structure of the graph
+        # and copy the Elements directly
+        pass
 
 
 

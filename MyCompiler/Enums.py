@@ -5,12 +5,13 @@ from enum import Enum
 class Operation(Enum):
     CONCAT = 1
     UNION = 2
-    KLEENE = 3
+    # KLEENE = 3
     GROUP = 4
     IDENTITY = 5
-    PLUS = 6
-    QUESTION = 7
+    # PLUS = 6
+    # QUESTION = 7
     CHAR_CLASS = 8
+    QUANTIFIER = 9
 
 
 class SpecialCharacter(Enum):

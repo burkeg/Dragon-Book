@@ -6,7 +6,6 @@ from RegExpr import *
 class TestSimulator(TestCase):
     def test_simulate(self):
         positive_tests = {
-            r'.': ['a'],
             r'(a|b)*a': ['aa', 'aaaaaa', 'baaaa', 'abaa'],
             r'(a|b)*abb': ['abb', 'aaaaaabb', 'baaaabb', 'abaabb'],
             r'a*': ['', 'a', 'aa', 'aaaaaaaaa'],
@@ -37,6 +36,8 @@ class TestSimulator(TestCase):
             r'[\D\d]': ['a', 'b', ' ', '1'],
             r'[\S]': ['a', 'b', '1'],
             r'[^a-c^]': ['1', ' ', '\n', 'Z'],
+            r'.': ['a'],
+            # r'a{1,2}': ['a', 'aa'],
         }
         negative_tests = {
             r'(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],

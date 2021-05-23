@@ -1,7 +1,8 @@
 import copy
+import math
 import string
 
-from Automata import Element, Alphabet, EscapedCharElement, CharClassElement, UnmatchableElement
+from Automata import Element, Alphabet, EscapedCharElement, CharClassElement, UnmatchableElement, QuantifierElement
 from Enums import SpecialCharacter, Operation, SpecialEscapedCharacter, ShorthandCharacterClass
 
 
@@ -12,7 +13,9 @@ class RegExprParseTree:
         self.right = right
         if isinstance(left, Element) and self.operation != Operation.IDENTITY:
             self.left = RegExprParseTree(left, Operation.IDENTITY)
-        if isinstance(right, Element) and self.operation != Operation.IDENTITY:
+        if isinstance(right, Element) and \
+                self.operation != Operation.IDENTITY and \
+                self.operation != Operation.QUANTIFIER:
             self.right = RegExprParseTree(right, Operation.IDENTITY)
         assert isinstance(operation, Operation)
         if self.operation == Operation.CONCAT:
@@ -21,16 +24,13 @@ class RegExprParseTree:
         elif self.operation == Operation.UNION:
             assert isinstance(self.left, RegExprParseTree)
             assert isinstance(self.right, RegExprParseTree)
-        elif self.operation == Operation.KLEENE:
+        elif self.operation == Operation.QUANTIFIER:
             assert isinstance(self.left, RegExprParseTree)
+            assert isinstance(self.right, QuantifierElement)
         elif self.operation == Operation.GROUP:
             assert isinstance(self.left, RegExprParseTree)
         elif self.operation == Operation.IDENTITY:
             assert isinstance(self.left, Element)
-        elif self.operation == Operation.PLUS:
-            assert isinstance(self.left, RegExprParseTree)
-        elif self.operation == Operation.QUESTION:
-            assert isinstance(self.left, RegExprParseTree)
         elif self.operation == Operation.CHAR_CLASS:
             assert isinstance(self.left, RegExprParseTree)
 
@@ -40,9 +40,7 @@ class RegExprParseTree:
         expression = RegExprParseTree.handle_char_class(expression)
         expression = RegExprParseTree.handle_escaped_special_chars(expression)
         expression = RegExprParseTree.handle_grouping(expression)
-        expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.KLEENE)
-        expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.PLUS)
-        expression = RegExprParseTree.handle_quantifier(expression, SpecialCharacter.QUESTION)
+        expression = RegExprParseTree.handle_quantifiers(expression)
         expression = RegExprParseTree.handle_union(expression)
         expression = RegExprParseTree.handle_concat(expression)
 
@@ -56,7 +54,7 @@ class RegExprParseTree:
     def handle_identity(expression):
         new_expression = []
         for term in expression:
-            if isinstance(term, Element):
+            if isinstance(term, Element) and not isinstance(term, QuantifierElement):
                 new_expression.append(RegExprParseTree(term, Operation.IDENTITY))
             else:
                 new_expression.append(term)
@@ -109,6 +107,10 @@ class RegExprParseTree:
                             # Special characters have their meaning ignored inside character classes
                             char_list.append(str(expression_inside_parens))
                             continue
+                        if isinstance(expression_inside_parens, QuantifierElement):
+                            char_list.append(expression_inside_parens.value)
+                            continue
+
                         assert isinstance(expression_inside_parens, RegExprParseTree), error_str
                         assert expression_inside_parens.operation == Operation.IDENTITY, error_str
                         elem = expression_inside_parens.left
@@ -230,29 +232,22 @@ class RegExprParseTree:
                    RegExprParseTree.handle_grouping(expression[1:])
 
     @staticmethod
-    def handle_quantifier(expression, quantifier):
-        assert isinstance(quantifier, SpecialCharacter)
+    def handle_quantifiers(expression):
         if len(expression) == 0:
             return []
         if len(expression) == 1:
             return expression
 
-        if expression[1] == quantifier:
-            operation = None
-            if quantifier == SpecialCharacter.KLEENE:
-                operation = Operation.KLEENE
-            elif quantifier == SpecialCharacter.PLUS:
-                operation = Operation.PLUS
-            elif quantifier == SpecialCharacter.QUESTION:
-                operation = Operation.QUESTION
-            kleene_target = RegExprParseTree(
+        if isinstance(expression[1], QuantifierElement):
+            quant_target = RegExprParseTree(
                 expression[0],
-                operation)
-            return RegExprParseTree.handle_quantifier(
-                [kleene_target] + expression[2:], quantifier)
+                Operation.QUANTIFIER,
+                expression[1])
+            return RegExprParseTree.handle_quantifiers(
+                [quant_target] + expression[2:])
         else:
             return [expression[0]] + \
-                   RegExprParseTree.handle_quantifier(expression[1:], quantifier)
+                   RegExprParseTree.handle_quantifiers(expression[1:])
 
     @staticmethod
     def handle_union(expression):
@@ -345,7 +340,33 @@ class RegExpr:
                 multicharacter_element = []
                 continue
             elif character == '}':
-                term_to_add = Element('{' + ''.join(multicharacter_element) + '}')
+                # Check to see if this is a quantifier or a multicharacter element
+                multichar_element_chars = ''.join(multicharacter_element)
+                comma_separated = multichar_element_chars.split(',')
+                is_quantifier = False
+                if len(comma_separated) == 2:
+                    is_first_num = all([c.isdigit() for c in comma_separated[0]])
+                    is_second_num = all([c.isdigit() for c in comma_separated[1]])
+                    if is_first_num and is_second_num and len(comma_separated[0]) > 0:
+                        first_num = int(comma_separated[0])
+                        if len(comma_separated[1]) == 0:
+                            second_num = math.inf
+                        else:
+                            second_num = int(comma_separated[1])
+                        assert first_num <= second_num, 'In a quantifier {a,b} a must be <= b'
+                        is_quantifier = True
+                        term_to_add = QuantifierElement(first_num, second_num)
+                if len(comma_separated) == 1:
+                    is_first_num = all([c.isdigit() for c in comma_separated[0]])
+                    if is_first_num and len(comma_separated[0]) > 0:
+                        first_num = int(comma_separated[0])
+                        is_quantifier = True
+                        term_to_add = QuantifierElement(first_num, first_num)
+
+
+                if not is_quantifier:
+                    term_to_add = Element('{' + multichar_element_chars + '}')
+
                 multicharacter_element = None
             elif multicharacter_element is not None:
                 multicharacter_element.append(character)
@@ -357,11 +378,11 @@ class RegExpr:
             elif character == '|':
                 term_to_add = SpecialCharacter.UNION
             elif character == '*':
-                term_to_add = SpecialCharacter.KLEENE
+                term_to_add = QuantifierElement(0, math.inf)
             elif character == '+':
-                term_to_add = SpecialCharacter.PLUS
+                term_to_add = QuantifierElement(1, math.inf)
             elif character == '?':
-                term_to_add = SpecialCharacter.QUESTION
+                term_to_add = QuantifierElement(0, 1)
             elif character == '[':
                 term_to_add = SpecialCharacter.LEFT_SQUARE_BRACKET
             elif character == ']':
@@ -476,7 +497,7 @@ class RegularDefinition:
 
 
 def do_stuff():
-    RegExpr.from_string('\d')
+    RegExpr.from_string('a*')
 
 
 if __name__ == '__main__':
