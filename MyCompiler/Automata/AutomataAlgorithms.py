@@ -1,3 +1,4 @@
+import copy
 import math
 
 from Automata import Automata, NFA, Transition, EmptyExpression, NFAState, Element, NFAOneStartOneEnd, DFA, DFAState, \
@@ -19,7 +20,7 @@ class AutomataUtils:
         states = set()
         for transition in s.outgoing_flat():
             assert isinstance(transition, Transition)
-            if transition.element == EmptyExpression:
+            if isinstance(transition.element, EmptyExpression):
                 states.add(transition.target)
         return states
 
@@ -121,14 +122,14 @@ def RegExpr_to_NFA(regexpr):
             N_t = recursive_parse_tree_to_NFA(parse_tree.right)
 
             end_state = NFAState('f', accepting=True)
-            end_transition = Transition(EmptyExpression, end_state)
+            end_transition = Transition(EmptyExpression(), end_state)
             N_s.stop.accepting = False
             N_t.stop.accepting = False
             N_s.stop.add_outgoing(end_transition)
             N_t.stop.add_outgoing(end_transition)
 
-            N_s_start_transition = Transition(EmptyExpression, N_s.start)
-            N_t_start_transition = Transition(EmptyExpression, N_t.start)
+            N_s_start_transition = Transition(EmptyExpression(), N_s.start)
+            N_t_start_transition = Transition(EmptyExpression(), N_t.start)
             start_state = NFAState('i')
             start_state.add_outgoing(N_s_start_transition)
             start_state.add_outgoing(N_t_start_transition)
@@ -148,82 +149,107 @@ def RegExpr_to_NFA(regexpr):
         elif parse_tree.operation == Operation.QUANTIFIER:
             quantifier = parse_tree.right
             assert isinstance(quantifier, QuantifierElement)
-            # r = s*
+            # r = s* AKA s{0,inf}
             if quantifier.start == 0 and quantifier.stop == math.inf:
                 N_s = recursive_parse_tree_to_NFA(parse_tree.left)
 
                 end_state = NFAState('f', accepting=True)
-                end_transition = Transition(EmptyExpression, end_state)
+                end_transition = Transition(EmptyExpression(), end_state)
                 N_s.stop.accepting = False
                 N_s.stop.add_outgoing(end_transition)
 
-                N_s_start_transition = Transition(EmptyExpression, N_s.start)
+                N_s_start_transition = Transition(EmptyExpression(), N_s.start)
                 start_state = NFAState('i')
                 start_state.add_outgoing(N_s_start_transition)
 
-                skip_transition = Transition(EmptyExpression, end_state)
-                loop_transition = Transition(EmptyExpression, N_s.start)
+                skip_transition = Transition(EmptyExpression(), end_state)
+                loop_transition = Transition(EmptyExpression(), N_s.start)
                 start_state.add_outgoing(skip_transition)
                 N_s.stop.add_outgoing(loop_transition)
                 return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
-            # r = s+
+            # r = s+ AKA s{1,inf}
             elif quantifier.start == 1 and quantifier.stop == math.inf:
                 N_s = recursive_parse_tree_to_NFA(parse_tree.left)
 
                 end_state = NFAState('f', accepting=True)
-                end_transition = Transition(EmptyExpression, end_state)
+                end_transition = Transition(EmptyExpression(), end_state)
                 N_s.stop.accepting = False
                 N_s.stop.add_outgoing(end_transition)
 
-                N_s_start_transition = Transition(EmptyExpression, N_s.start)
+                N_s_start_transition = Transition(EmptyExpression(), N_s.start)
                 start_state = NFAState('i')
                 start_state.add_outgoing(N_s_start_transition)
 
-                # skip_transition = Transition(EmptyExpression, end_state)
-                loop_transition = Transition(EmptyExpression, N_s.start)
-                # start_state.add_outgoing(skip_transition)
+                loop_transition = Transition(EmptyExpression(), N_s.start)
                 N_s.stop.add_outgoing(loop_transition)
                 return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
-            # r = s?
+            # r = s? AKA s{0,1}
             elif quantifier.start == 0 and quantifier.stop == 1:
                 N_s = recursive_parse_tree_to_NFA(parse_tree.left)
 
                 end_state = NFAState('f', accepting=True)
-                end_transition = Transition(EmptyExpression, end_state)
+                end_transition = Transition(EmptyExpression(), end_state)
                 N_s.stop.accepting = False
                 N_s.stop.add_outgoing(end_transition)
 
-                N_s_start_transition = Transition(EmptyExpression, N_s.start)
+                N_s_start_transition = Transition(EmptyExpression(), N_s.start)
                 start_state = NFAState('i')
                 start_state.add_outgoing(N_s_start_transition)
 
-                skip_transition = Transition(EmptyExpression, end_state)
-                # loop_transition = Transition(EmptyExpression, N_s.start)
+                skip_transition = Transition(EmptyExpression(), end_state)
                 start_state.add_outgoing(skip_transition)
-                # N_s.stop.add_outgoing(loop_transition)
                 return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
-            # r = s?
-            elif quantifier.start == 0 and quantifier.stop == 1:
+            # r = s{1,1}
+            elif quantifier.start == 1 and quantifier.stop == 1:
+                return recursive_parse_tree_to_NFA(parse_tree.left)
+            # r = s{0,m}
+            elif quantifier.start == 0:
                 N_s = recursive_parse_tree_to_NFA(parse_tree.left)
-
-                end_state = NFAState('f', accepting=True)
-                end_transition = Transition(EmptyExpression, end_state)
                 N_s.stop.accepting = False
-                N_s.stop.add_outgoing(end_transition)
 
-                N_s_start_transition = Transition(EmptyExpression, N_s.start)
+                N_s_0_m_minus_1 = recursive_parse_tree_to_NFA(
+                    RegExprParseTree(
+                        parse_tree.left,
+                        Operation.QUANTIFIER,
+                        QuantifierElement(start=0, stop=quantifier.stop - 1)))
+                N_s_0_m_minus_1.stop.accepting = False
+
+
                 start_state = NFAState('i')
-                start_state.add_outgoing(N_s_start_transition)
+                end_state = NFAState('f', accepting=True)
 
-                skip_transition = Transition(EmptyExpression, end_state)
-                # loop_transition = Transition(EmptyExpression, N_s.start)
-                start_state.add_outgoing(skip_transition)
-                # N_s.stop.add_outgoing(loop_transition)
+                start_state.add_outgoing(Transition(EmptyExpression(), N_s_0_m_minus_1.start))
+                start_state.add_outgoing(Transition(EmptyExpression(), N_s.start))
+                start_state.add_outgoing(Transition(EmptyExpression(), end_state))
+
+                N_s_0_m_minus_1.stop.add_outgoing(Transition(EmptyExpression(), N_s.start))
+
+                N_s.stop.add_outgoing(Transition(EmptyExpression(), end_state))
+
                 return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
-            # r = s{a,b}
-            elif quantifier.start == 0 and quantifier.stop == 1:
-                # TODO
-                raise Exception('Implement me!')
+            # r = s{n,m}
+            else:
+                N_s = recursive_parse_tree_to_NFA(parse_tree.left)
+                N_s.stop.accepting = False
+
+                N_s_0_n_minus_1_m_minus_1 = recursive_parse_tree_to_NFA(
+                    RegExprParseTree(
+                        parse_tree.left,
+                        Operation.QUANTIFIER,
+                        QuantifierElement(start=quantifier.start - 1, stop=quantifier.stop - 1)))
+                N_s_0_n_minus_1_m_minus_1.stop.accepting = False
+
+
+                start_state = NFAState('i')
+                end_state = NFAState('f', accepting=True)
+
+                start_state.add_outgoing(Transition(EmptyExpression(), N_s_0_n_minus_1_m_minus_1.start))
+
+                N_s_0_n_minus_1_m_minus_1.stop.add_outgoing(Transition(EmptyExpression(), N_s.start))
+
+                N_s.stop.add_outgoing(Transition(EmptyExpression(), end_state))
+
+                return NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
         # r = (s)
         elif parse_tree.operation == Operation.GROUP:
             return recursive_parse_tree_to_NFA(parse_tree.left)
@@ -276,17 +302,12 @@ def NFAtoDFA(nfa):
     return DFA(start_DFA_state, nfa.alphabet)
 
 def do_stuff():
-    expr = RegExpr.from_string('(a|b)*abb')
+    expr = RegExpr.from_string('a{1}')
     nfa = RegExpr_to_NFA(expr)
     nfa.relabel()
     print(nfa)
     nfaSim = NFASimulator(nfa)
-    print(nfaSim.simulate(Element.element_list_from_string('aa')))
-    dfa = NFAtoDFA(nfa)
-    dfa.relabel()
-    print(dfa)
-    dfaSim = DFASimulator(dfa)
-    print(dfaSim.simulate(Element.element_list_from_string('aa')))
+    print(nfaSim.simulate(Element.element_list_from_string('a')))
 
 
 if __name__ == '__main__':

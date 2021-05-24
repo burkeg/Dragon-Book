@@ -1,3 +1,4 @@
+import copy
 import math
 from collections.abc import Iterable
 
@@ -109,8 +110,26 @@ class Alphabet:
 class Transition:
     # This describes some transition between states on an automata
     def __init__(self, element, target):
+        assert isinstance(element, Element)
+        assert isinstance(target, State)
         self.element = element
         self.target = target
+
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = {}
+        if self in memo:
+            existing = memo.get(self)
+            return existing
+
+        duplicate = Transition(
+            element=copy.deepcopy(self.element, memo),
+            target=copy.deepcopy(self.target, memo)
+        )
+
+        memo[self] = duplicate
+
+        return duplicate
 
 
 class State:
@@ -132,6 +151,26 @@ class State:
 
     def _outgoing_flat(self):
         raise Exception('This should be handled by a more derived class.')
+
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = {}
+        if self in memo:
+            existing = memo.get(self)
+            return existing
+
+        duplicate = type(self)(  # Using type(self) here so I use a more derived constructor if it exists
+            name=copy.deepcopy(self.name, memo),
+            accepting=self.accepting,
+            ID=copy.deepcopy(self.ID, memo)
+        )
+
+        memo[self] = duplicate
+
+        for transition in self.outgoing_flat():
+            duplicate.add_outgoing(copy.deepcopy(transition, memo))
+
+        return duplicate
 
 
 class NFAState(State):
@@ -215,19 +254,7 @@ class DFA(Automata):
 
 
 class NFA(Automata):
-    @staticmethod
-    def basis(element=None):
-        element = EmptyExpression() if element is None else element
-        assert isinstance(element, Element)
-        end_state = NFAState('f', accepting=True)
-        transition_to_end = Transition(element, end_state)
-        start_state = NFAState('i', outgoing={element: [transition_to_end]})
-        return NFA(start_state, Alphabet([element]))
-
-    def make_copy(self):
-        # Not quite a shallow copy, not quite a deep copy. I want to copy the structure of the graph
-        # and copy the Elements directly
-        pass
+    pass
 
 
 
@@ -251,16 +278,34 @@ class NFAOneStartOneEnd(NFA):
             start_state = NFAState('i')
         return NFAOneStartOneEnd(start_state, Alphabet([element]), end_state)
 
+    def __deepcopy__(self, memo=None):
+        # I want to copy the structure of the graph but keep references to the same elements in transitions
+
+        # # This should recursively rebuild the whole graph from the start point
+        # start = copy.copy(self.start)
+
+        # To get the end point let's search through the graph. It's possible the accepting state
+        # is unreachable though so we'll need to handle that too
+        if memo is None:
+            memo = {}
+        if self in memo:
+            existing = memo.get(self)
+            return existing
+
+        duplicate = NFAOneStartOneEnd(
+            copy.deepcopy(self.start, memo),
+            copy.deepcopy(self.alphabet, memo),
+            copy.deepcopy(self.stop, memo)
+        )
+
+        return duplicate
+
 
 
 def do_stuff():
-    sigma1 = Alphabet([Element('a'), Element('b')])
-    sigma2 = Alphabet([Element('apples'), Element('oranges')])
-    print(sigma2)
-    nfa1 = NFA.basis()
-    nfa2 = NFA.basis(Element('abc123'))
-    print(nfa1.alphabet)
-    print(nfa2.alphabet)
+    nfa = NFAOneStartOneEnd.basis(Element('abc123'))
+    nfa2 = copy.deepcopy(nfa)
+    print(nfa.alphabet)
 
 
 if __name__ == '__main__':

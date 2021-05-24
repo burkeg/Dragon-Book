@@ -37,7 +37,23 @@ class TestSimulator(TestCase):
             r'[\S]': ['a', 'b', '1'],
             r'[^a-c^]': ['1', ' ', '\n', 'Z'],
             r'.': ['a'],
-            # r'a{1,2}': ['a', 'aa'],
+            r'a{0,}': ['', 'a', 'aa'],
+            r'a{1,}': ['a', 'aa'],
+            r'a{0,1}': ['', 'a'],
+            r'a{0,2}': ['', 'a', 'aa'],
+            r'a{0,8}': ['', 'a', 'aaaaaaa', 'aaaaaaaa'],
+            r'a{1,8}': ['a', 'aaaaaaa', 'aaaaaaaa'],
+            r'a{5,8}': ['aaaaa', 'aaaaaaaa'],
+            r'a{5,}': ['aaaaa', 'aaaaaaa', 'aaaaaaaa'],
+            r'(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}':
+                [
+                    '123-456-7890',
+					'(123) 456-7890',
+					'123 456 7890',
+					'123.456.7890',
+					'+91 (123) 456-7890',
+                ],
+            r'\d{3}': ['111'],
         }
         negative_tests = {
             r'(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],
@@ -49,40 +65,51 @@ class TestSimulator(TestCase):
             r'[^\S\s]': [''],
             r'[]': ['literally anything'],
             r'[^a-c^]': ['a', 'b', 'c', '^'],
+            r'a{1,}': [''],
+            r'a{0,1}': ['aa', 'aaa'],
+            r'a{0,2}': ['aaa', 'aaaa'],
+            r'a{0,8}': ['aaaaaaaaa', 'aaaaaaaaaa', 'aaaaaaaaaaa', ],
+            r'a{1,8}': ['', 'aaaaaaaaa', 'aaaaaaaaaa', 'aaaaaaaaaaa', ],
+            r'a{5,8}': ['', 'a', 'aa', 'aaa', 'aaaa', 'aaaaaaaaa','aaaaaaaaaa',],
+            r'a{5,}': ['', 'a', 'aa', 'aaa', 'aaaa'],
         }
 
         with self.subTest(simulator='NFA'):
-            for regex, test in positive_tests.items():
-                for testcase in test:
-                    with self.subTest(regex=regex, testcase=testcase):
-                        expr = RegExpr.from_string(regex)
-                        nfa = RegExpr_to_NFA(expr)
-                        nfaSim = NFASimulator(nfa)
-                        assert nfaSim.simulate(Element.element_list_from_string(testcase))
+            with self.subTest(type='Positive'):
+                for regex, test in positive_tests.items():
+                    for testcase in test:
+                        with self.subTest(regex=regex, testcase=testcase):
+                            expr = RegExpr.from_string(regex)
+                            nfa = RegExpr_to_NFA(expr)
+                            nfaSim = NFASimulator(nfa)
+                            assert nfaSim.simulate(Element.element_list_from_string(testcase))
 
-            for regex, test in negative_tests.items():
-                for testcase in test:
-                    with self.subTest(regex=regex, testcase=testcase):
-                        expr = RegExpr.from_string(regex)
-                        nfa = RegExpr_to_NFA(expr)
-                        nfaSim = NFASimulator(nfa)
-                        assert not nfaSim.simulate(Element.element_list_from_string(testcase))
+            with self.subTest(type='Negative'):
+                for regex, test in negative_tests.items():
+                    for testcase in test:
+                        with self.subTest(regex=regex, testcase=testcase):
+                            expr = RegExpr.from_string(regex)
+                            nfa = RegExpr_to_NFA(expr)
+                            nfaSim = NFASimulator(nfa)
+                            assert not nfaSim.simulate(Element.element_list_from_string(testcase))
 
         with self.subTest(simulator='DFA'):
-            for regex, test in positive_tests.items():
-                for testcase in test:
-                    with self.subTest(regex=regex, testcase=testcase):
-                        expr = RegExpr.from_string(regex)
-                        nfa = RegExpr_to_NFA(expr)
-                        dfa = NFAtoDFA(nfa)
-                        dfaSim = DFASimulator(dfa)
-                        assert dfaSim.simulate(Element.element_list_from_string(testcase))
+            with self.subTest(type='Positive'):
+                for regex, test in positive_tests.items():
+                    for testcase in test:
+                        with self.subTest(regex=regex, testcase=testcase):
+                            expr = RegExpr.from_string(regex)
+                            nfa = RegExpr_to_NFA(expr)
+                            dfa = NFAtoDFA(nfa)
+                            dfaSim = DFASimulator(dfa)
+                            assert dfaSim.simulate(Element.element_list_from_string(testcase))
 
-            for regex, test in negative_tests.items():
-                for testcase in test:
-                    with self.subTest(regex=regex, testcase=testcase):
-                        expr = RegExpr.from_string(regex)
-                        nfa = RegExpr_to_NFA(expr)
-                        dfa = NFAtoDFA(nfa)
-                        dfaSim = DFASimulator(dfa)
-                        assert not dfaSim.simulate(Element.element_list_from_string(testcase))
+            with self.subTest(type='Negative'):
+                for regex, test in negative_tests.items():
+                    for testcase in test:
+                        with self.subTest(regex=regex, testcase=testcase):
+                            expr = RegExpr.from_string(regex)
+                            nfa = RegExpr_to_NFA(expr)
+                            dfa = NFAtoDFA(nfa)
+                            dfaSim = DFASimulator(dfa)
+                            assert not dfaSim.simulate(Element.element_list_from_string(testcase))

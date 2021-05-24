@@ -356,7 +356,7 @@ class RegExpr:
                         assert first_num <= second_num, 'In a quantifier {a,b} a must be <= b'
                         is_quantifier = True
                         term_to_add = QuantifierElement(first_num, second_num)
-                if len(comma_separated) == 1:
+                elif len(comma_separated) == 1:
                     is_first_num = all([c.isdigit() for c in comma_separated[0]])
                     if is_first_num and len(comma_separated[0]) > 0:
                         first_num = int(comma_separated[0])
@@ -392,7 +392,6 @@ class RegExpr:
             else:
                 term_to_add = Element(character)
             expression.append(term_to_add)
-            prev_char = character
         elements = []
         for term in expression:
             if isinstance(term, Element):
@@ -497,7 +496,7 @@ class RegularDefinition:
 
 
 def do_stuff():
-    RegExpr.from_string('a*')
+    RegExpr.from_string('(a|b)*a')
 
 
 if __name__ == '__main__':
