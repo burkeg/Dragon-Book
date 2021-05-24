@@ -77,39 +77,39 @@ class TestSimulator(TestCase):
         with self.subTest(simulator='NFA'):
             with self.subTest(type='Positive'):
                 for regex, test in positive_tests.items():
+                    expr = RegExpr.from_string(regex)
+                    nfa = RegExpr_to_NFA(expr)
+                    nfaSim = NFASimulator(nfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            expr = RegExpr.from_string(regex)
-                            nfa = RegExpr_to_NFA(expr)
-                            nfaSim = NFASimulator(nfa)
                             assert nfaSim.simulate(Element.element_list_from_string(testcase))
 
             with self.subTest(type='Negative'):
                 for regex, test in negative_tests.items():
+                    expr = RegExpr.from_string(regex)
+                    nfa = RegExpr_to_NFA(expr)
+                    nfaSim = NFASimulator(nfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            expr = RegExpr.from_string(regex)
-                            nfa = RegExpr_to_NFA(expr)
-                            nfaSim = NFASimulator(nfa)
                             assert not nfaSim.simulate(Element.element_list_from_string(testcase))
 
         with self.subTest(simulator='DFA'):
             with self.subTest(type='Positive'):
                 for regex, test in positive_tests.items():
+                    expr = RegExpr.from_string(regex)
+                    nfa = RegExpr_to_NFA(expr)
+                    dfa = NFAtoDFA(nfa)
+                    dfaSim = DFASimulator(dfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            expr = RegExpr.from_string(regex)
-                            nfa = RegExpr_to_NFA(expr)
-                            dfa = NFAtoDFA(nfa)
-                            dfaSim = DFASimulator(dfa)
                             assert dfaSim.simulate(Element.element_list_from_string(testcase))
 
             with self.subTest(type='Negative'):
                 for regex, test in negative_tests.items():
+                    expr = RegExpr.from_string(regex)
+                    nfa = RegExpr_to_NFA(expr)
+                    dfa = NFAtoDFA(nfa)
+                    dfaSim = DFASimulator(dfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            expr = RegExpr.from_string(regex)
-                            nfa = RegExpr_to_NFA(expr)
-                            dfa = NFAtoDFA(nfa)
-                            dfaSim = DFASimulator(dfa)
                             assert not dfaSim.simulate(Element.element_list_from_string(testcase))
