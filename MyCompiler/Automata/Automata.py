@@ -1,9 +1,11 @@
 import copy
 import math
-from collections.abc import Iterable
 
-from Enums import SpecialEscapedCharacter, ShorthandCharacterClass
-
+# from AutomataAlgorithms import AutomataUtils
+# from Enums import *
+# # from AutomataAlgorithms import *
+import Enums
+import AutomataAlgorithms
 
 class Element:
     # This is some element of a language. It can be any arbitrary object,
@@ -31,24 +33,29 @@ class Element:
             elements.append(Element(character))
         return elements
 
+
 class EmptyExpression(Element):
     def __init__(self):
         super().__init__(None)
+
 
 # Should be produced whenever an impossible pattern is encountered.
 class UnmatchableElement(Element):
     def __init__(self):
         super().__init__(None)
 
+
 class EscapedCharElement(Element):
     def __init__(self, special_escaped_character):
-        assert isinstance(special_escaped_character, SpecialEscapedCharacter)
+        assert isinstance(special_escaped_character, Enums.SpecialEscapedCharacter)
         super().__init__(special_escaped_character)
+
 
 class CharClassElement(Element):
     def __init__(self, char_class):
-        assert isinstance(char_class, ShorthandCharacterClass)
+        assert isinstance(char_class, Enums.ShorthandCharacterClass)
         super().__init__(char_class)
+
 
 class QuantifierElement(Element):
     def __init__(self, start, stop):
@@ -104,7 +111,6 @@ class Alphabet:
             if element not in other:
                 return False
         return True
-
 
 
 class Transition:
@@ -249,13 +255,55 @@ class Automata:
                     queue.append(transition.target)
         return end_states
 
+
 class DFA(Automata):
     pass
 
 
 class NFA(Automata):
-    pass
+    def to_DFA(self):
+        Dtran = dict()
+        # intially e-closure(s_0) is the only state in Dstates
+        start_dstate = frozenset(AutomataAlgorithms.AutomataUtils.epsilon_closure(self.start))
+        Dstates = {start_dstate}
+        marked_states = set()
+        while True:
+            # while there is an unmarked state T in Dstates
+            unmarked_states = Dstates.difference(marked_states)
+            if len(unmarked_states) == 0:
+                break
+            T = unmarked_states.pop()
+            # mark T
+            marked_states.add(T)
+            # for each input symbol a
+            for a in self.alphabet:
+                assert isinstance(a, Element)
+                U = frozenset(
+                    AutomataAlgorithms.AutomataUtils.epsilon_closure(
+                        AutomataAlgorithms.AutomataUtils.move(T, a)))
+                if U not in Dstates:
+                    Dstates.add(U)
+                Dtran[(T, a)] = U
 
+        count = 0
+        DFA_states = dict()
+        for dstate in Dstates:
+            ID = count
+            count += 1
+            accepting = any([state.accepting for state in dstate])
+            outgoing = None # We need to build all states before doing this
+            DFA_states[dstate] = DFAState(accepting=accepting, outgoing=outgoing, ID=ID)
+
+        # 2nd pass to add transitions based on Dtran
+        for dstate in Dstates:
+            DFA_state = DFA_states[dstate]
+            for element in self.alphabet:
+                target_dstate = Dtran[(dstate, element)]
+                target_DFA_state = DFA_states[target_dstate]
+                DFA_state.add_outgoing(Transition(element, target_DFA_state))
+
+        start_DFA_state = DFA_states[start_dstate]
+        return DFA(start_DFA_state, self.alphabet)
 
 
 class NFAOneStartOneEnd(NFA):
@@ -299,7 +347,6 @@ class NFAOneStartOneEnd(NFA):
         )
 
         return duplicate
-
 
 
 def do_stuff():

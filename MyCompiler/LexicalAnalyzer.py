@@ -1,10 +1,10 @@
-from Automata import Element, Alphabet
-from RegExpr import RegularDefinition, RegExpr
-from SymbolTable import SymbolTable, SymbolTableManager
+import Automata
+import Enums
+import RegExpr
+import SymbolTable
 from inspect import signature
-
-from Tokens.Tag import Tag
-from Tokens.Token import Token
+import Tokens.Token
+from collections import Iterable
 
 
 class LexicalAnalyzer:
@@ -23,8 +23,8 @@ class LexicalAnalyzer:
         self.symbol_table_manager = symbol_table_manager
         self.regular_definition = regular_definition
         self.translation_rules = translation_rules
-        assert isinstance(self.symbol_table_manager, SymbolTableManager)
-        assert isinstance(self.regular_definition, RegularDefinition)
+        assert isinstance(self.symbol_table_manager, SymbolTable.SymbolTableManager)
+        assert isinstance(self.regular_definition, RegExpr.RegularDefinition)
         assert isinstance(self.translation_rules, list)
         self._verify()
 
@@ -34,12 +34,12 @@ class LexicalAnalyzer:
             assert len(translation_rule) == 2
             pattern = translation_rule[0]
             action = translation_rule[1]
-            if isinstance(pattern, Element):
+            if isinstance(pattern, Automata.Element):
                 # Any Element d_i from the regular_definition
                 assert pattern.value in self.regular_definition.regular_expressions
             elif isinstance(pattern, list):
                 for element in pattern:
-                    assert isinstance(element, Element)
+                    assert isinstance(element, Automata.Element)
                     # List of Element where no element is any d_i.
                     assert element.value not in self.regular_definition.regular_expressions
             else:
@@ -47,22 +47,26 @@ class LexicalAnalyzer:
 
             assert len(signature(action).parameters) == 2
 
+    def process(self, character_iter):
+        assert isinstance(character_iter, Iterable)
+
 
 
 def do_stuff():
     # A -> a*b
     # B -> b a A
-    A = RegExpr.from_string('a*b')
-    before_add_B = RegExpr.from_string('ba')
-    B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
-    reg_def = RegularDefinition([A, B])
+    # A = RegExpr.from_string('a*b')
+    # before_add_B = RegExpr.from_string('ba')
+    # B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
+    # reg_def = RegularDefinition([A, B])
+    reg_def = RegExpr.RegularDefinition.from_string('A a*b\nB ba{A}')
     print(reg_def)
-    symbol_table_manager = SymbolTableManager()
+    symbol_table_manager = SymbolTable.SymbolTableManager()
 
     def B_action(symbol_table, text):
-        return Token(Tag.ID)
+        return Tokens.Token.Token(Enums.Tag.ID)
 
-    translation_rules = [(Element(B), B_action)]
+    translation_rules = [(Automata.Element(reg_def), B_action)]
     lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
     print(lexer)
 
