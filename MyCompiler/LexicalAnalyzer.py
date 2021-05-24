@@ -119,8 +119,15 @@ class LexicalAnalyzer:
             if len(accepted_states) > 1:
                 # We have to decide between multiple productions. The winner is the one declared first.
                 for accepted_state in accepted_states:
+                    if producing_state is not None:
+                        break
                     for d_i in self.regular_definition.regular_expressions:
-                        print(d_i)
+                        if producing_state is not None:
+                            break
+                        for d_i_priority in self.regular_definition.regular_expressions:
+                            if d_i == d_i_priority:
+                                producing_state = accepted_state
+                                break
             else:
                 # 1 and only state:
                 producing_state = accepted_states.pop()
@@ -148,8 +155,15 @@ def do_stuff():
     # before_add_B = RegExpr.from_string('ba')
     # B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
     # reg_def = RegularDefinition([A, B])
-    reg_def = RegExpr.RegularDefinition.from_string('A ab\nB ba{A}')
+    reg_def = RegExpr.RegularDefinition.from_string('A baab\nB baab')
     symbol_table_manager = SymbolTable.SymbolTableManager()
+
+    def A_action(symbol_table, lexeme):
+        assert isinstance(symbol_table, SymbolTable.SymbolTable)
+        assert isinstance(lexeme, str)
+        new_token = Tokens.Token.Token(Enums.Tag.NUM, '', lexeme)
+        symbol_table.create_symbol(new_token)
+        return new_token
 
     def B_action(symbol_table, lexeme):
         assert isinstance(symbol_table, SymbolTable.SymbolTable)
@@ -158,7 +172,7 @@ def do_stuff():
         symbol_table.create_symbol(new_token)
         return new_token
 
-    translation_rules = [(Automata.Element(reg_def['A']), B_action),
+    translation_rules = [(Automata.Element(reg_def['A']), A_action),
                          (Automata.Element(reg_def['B']), B_action)]
     lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
     for token in lexer.process('baabbaab'):
