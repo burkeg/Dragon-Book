@@ -1,15 +1,18 @@
-from Tokens.Token import Token
+import Tokens.Token
 
 
 class SymbolTableEntry:
-    def __init__(self, token=None):
+    def __init__(self, token):
         self.token = token
-        assert isinstance(token, Token)
+        assert isinstance(token, Tokens.Token.Token)
         token.symbol_table_entry = self
 
 class SymbolTableManager:
     def __init__(self):
-        self.symbol_table_root = SymbolTable()
+        self._symbol_table_root = SymbolTable()
+
+    def curr_table(self):
+        return self._symbol_table_root
 
 class SymbolTable:
     def __init__(self, parent=None):
@@ -17,5 +20,5 @@ class SymbolTable:
         self.symbols = []
 
     def create_symbol(self, token):
-        assert isinstance(token, Token)
-        self.symbols.append(SymbolTableEntry())
+        assert isinstance(token, Tokens.Token.Token)
+        self.symbols.append(SymbolTableEntry(token))

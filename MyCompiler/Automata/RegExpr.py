@@ -4,11 +4,6 @@ import string
 
 import Automata
 import Enums
-# # from Automata import *
-# from Automata import Element, Alphabet, EscapedCharElement, CharClassElement, UnmatchableElement, QuantifierElement, \
-#     NFAOneStartOneEnd, NFAState, Transition, EmptyExpression
-# from Enums import SpecialCharacter, Operation, SpecialEscapedCharacter, ShorthandCharacterClass
-# # from Enums import *
 
 
 class RegExprParseTree:
@@ -407,6 +402,9 @@ class RegExpr:
         # https://en.wikipedia.org/wiki/Thompson%27s_construction
         assert isinstance(parse_tree, RegExprParseTree)
         if parse_tree.operation == Enums.Operation.IDENTITY:
+            if isinstance(parse_tree.left, Automata.Element) and \
+                    isinstance(parse_tree.left.value, RegExpr):
+                return parse_tree.left.value.to_NFA()
             return Automata.NFAOneStartOneEnd.basis(parse_tree.left)
 
         # r = s|t

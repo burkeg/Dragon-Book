@@ -1,11 +1,10 @@
 import copy
 import math
 
-# from AutomataAlgorithms import AutomataUtils
-# from Enums import *
-# # from AutomataAlgorithms import *
 import Enums
 import AutomataAlgorithms
+import RegExpr
+
 
 class Element:
     # This is some element of a language. It can be any arbitrary object,
@@ -92,7 +91,11 @@ class Alphabet:
 
     def union(self, other):
         assert isinstance(other, Alphabet)
-        return Alphabet(list(set(self.elements).union(set(other.elements))))
+        return Alphabet(set(self.elements).union(set(other.elements)))
+
+    def union_update(self, other):
+        assert isinstance(other, Alphabet)
+        self.elements = set(self.elements).union(set(other.elements))
 
     def __iter__(self):
         return iter(self.elements)
@@ -196,6 +199,15 @@ class NFAState(State):
 
     def _outgoing_flat(self):
         return [transition for transition_list in self.outgoing.values() for transition in transition_list]
+
+
+class ProductionState(NFAState):
+    def __init__(self, action, d_i):
+        assert callable(action)
+        assert isinstance(d_i, RegExpr.RegExpr)
+        self.action = action
+        self.d_i = d_i
+        super().__init__(accepting=True)
 
 
 class DFAState(State):

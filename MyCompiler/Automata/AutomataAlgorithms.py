@@ -1,12 +1,5 @@
-import copy
-import math
-
 import Automata
 import RegExpr
-# from Automata import Automata, NFA, Transition, EmptyExpression, NFAState, Element, NFAOneStartOneEnd, DFA, DFAState, \
-#     State, QuantifierElement
-# # from Automata import *
-# from RegExpr import RegExpr
 
 
 class Simulator:
@@ -84,6 +77,23 @@ class NFASimulator(Simulator):
             S = AutomataUtils.epsilon_closure(AutomataUtils.move(S, c))
             c = next(element_gen)
         return len(S.intersection(F)) != 0
+
+
+    def simulate_gen(self, expression):
+        self.expression = expression
+        F = self.automata.ending_states()
+        S = AutomataUtils.epsilon_closure(self.automata.start)
+        element_gen = self.next_element()
+        c = next(element_gen)
+        stop_sim = False
+        while not isinstance(c, EOF):
+            S = AutomataUtils.epsilon_closure(AutomataUtils.move(S, c))
+            yield S.intersection(F)
+            if len(S) == 0:
+                # We hit a state with a transition that is unmatchable.
+                break
+            c = next(element_gen)
+        yield EOF()
 
 
 class DFASimulator(Simulator):
