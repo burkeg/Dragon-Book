@@ -126,6 +126,9 @@ class LexicalAnalyzer:
                         if producing_state is not None:
                             break
                         for d_i_priority in self.regular_definition.regular_expressions:
+                            # Skip over expressions that don't have productions associated with them.
+                            if d_i_priority not in self._d_i_to_action.keys():
+                                continue
                             if d_i == d_i_priority:
                                 producing_state = accepted_state
                                 break
@@ -137,8 +140,18 @@ class LexicalAnalyzer:
             lexeme_elements = input_elements[:chars_consumed]
             lexeme = ''.join([element.value for element in lexeme_elements])
             assert isinstance(self.symbol_table_manager, SymbolTable.SymbolTableManager)
-            if token := producing_state.action(self.symbol_table_manager.curr_table(), lexeme):
-                yield token
+            print(producing_state.action)
+            produced_token = producing_state.action(self.symbol_table_manager.curr_table(), lexeme)
+            for i in range(100):
+                print(i)
+                producing_state.action(self.symbol_table_manager.curr_table(), lexeme)
+            print(produced_token)
+            if produced_token:
+                print('True')
+            else:
+                print('False')
+            if produced_token is not None:
+                yield produced_token
 
             input_elements = input_elements[chars_consumed:]
 
@@ -148,6 +161,22 @@ class LexicalAnalyzer:
 
 
 
+
+def num_action(symbol_table, lexeme):
+    assert isinstance(symbol_table, SymbolTable.SymbolTable)
+    assert isinstance(lexeme, str)
+    new_token = Tokens.Token.Token(Enums.Tag.NUM, '', lexeme)
+    symbol_table.create_symbol(new_token)
+    return new_token
+
+def ID_action(symbol_table, lexeme):
+    print("entering ID action")
+    assert isinstance(symbol_table, SymbolTable.SymbolTable)
+    assert isinstance(lexeme, str)
+    new_token = Tokens.Token.Token(Enums.Tag.ID, '', lexeme)
+    symbol_table.create_symbol(new_token)
+    print(f'Producing token: {new_token}')
+    return new_token
 
 def do_stuff():
     # A -> a*b
@@ -181,36 +210,26 @@ def do_stuff():
     #     print(token)
     #
     # print()
-    reg_def = RegExpr.RegularDefinition.from_string(r'delim [ \t\n]' + '\n' + \
-        r'ws {delim}+' + '\n' + \
-        r'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' + \
-        r'letter_ {letter}|_' + '\n' + \
-        r'digit 0|1|2|3|4|5|6|7|8|9' + '\n' + \
-        r'id {letter_}({letter_}|{digit})*' + '\n' + \
-        r'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?')
+    # reg_def = RegExpr.RegularDefinition.from_string(r'delim [ \t\n]' + '\n' + \
+    #     r'ws {delim}+' + '\n' + \
+    #     r'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' + \
+    #     r'letter_ {letter}|_' + '\n' + \
+    #     r'digit 0|1|2|3|4|5|6|7|8|9' + '\n' + \
+    #     r'id {letter_}({letter_}|{digit})*' + '\n' + \
+    #     r'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?')
+    reg_def = RegExpr.RegularDefinition.from_string(
+        r'letter a|b' + '\n' + \
+        r'digit 0|1' + '\n' + \
+        r'id {letter}({letter}|{digit})*')
     symbol_table_manager = SymbolTable.SymbolTableManager()
-
-    def num_action(symbol_table, lexeme):
-        assert isinstance(symbol_table, SymbolTable.SymbolTable)
-        assert isinstance(lexeme, str)
-        new_token = Tokens.Token.Token(Enums.Tag.NUM, '', lexeme)
-        symbol_table.create_symbol(new_token)
-        return new_token
-
-    def ID_action(symbol_table, lexeme):
-        assert isinstance(symbol_table, SymbolTable.SymbolTable)
-        assert isinstance(lexeme, str)
-        new_token = Tokens.Token.Token(Enums.Tag.ID, '', lexeme)
-        symbol_table.create_symbol(new_token)
-        return new_token
 
     translation_rules = [
         (Automata.Element(reg_def['id']), ID_action),
-        (Automata.Element(reg_def['num']), num_action)
+        # (Automata.Element(reg_def['number']), num_action)
     ]
     lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
     tokens = []
-    for token in lexer.process('aaa ab'):
+    for token in lexer.process('a'):
         # print(token)
         tokens.append(token)
 

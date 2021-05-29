@@ -72,9 +72,11 @@ class TestLexicalAnalyzer(TestCase):
         test_cases = [
             'aaa',
             '123',
-            'abc',
             'abc aaa',
-            'abc aaa aaasdf222    \t\n   a',
+            'abc aaa aaasdf222    \t\n   a123',
+            'a',
+            '1',
+            '',
         ]
         reg_def = RegExpr.RegularDefinition.from_string(r'delim [ \t\n]' + '\n' + \
             r'ws {delim}+' + '\n' + \
@@ -101,7 +103,7 @@ class TestLexicalAnalyzer(TestCase):
 
         translation_rules = [
             (Automata.Element(reg_def['id']), ID_action),
-            (Automata.Element(reg_def['num']), num_action)
+            (Automata.Element(reg_def['number']), num_action)
         ]
         lexer = LexicalAnalyzer.LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
         for case in test_cases:
@@ -112,4 +114,4 @@ class TestLexicalAnalyzer(TestCase):
                     tokens.append(token)
 
                 print(tokens)
-                assert len(tokens) > 0
+                assert len(tokens) == len(case.split())

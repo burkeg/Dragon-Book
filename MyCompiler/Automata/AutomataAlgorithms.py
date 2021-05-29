@@ -125,12 +125,12 @@ class DFASimulator(Simulator):
 
 
 def do_stuff():
-    expr = RegExpr.RegExpr.from_string('a{1}')
+    expr = RegExpr.RegExpr.from_string(r'\w+')
     nfa = expr.to_NFA()
     nfa.relabel()
     print(nfa)
     nfaSim = NFASimulator(nfa)
-    print(nfaSim.simulate(Automata.Element.element_list_from_string('a')))
+    print(nfaSim.simulate(Automata.Element.element_list_from_string('a123')))
 
 
 if __name__ == '__main__':

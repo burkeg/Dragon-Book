@@ -74,10 +74,15 @@ class ShorthandCharacterClass(Enum):
     NEGATED_WORD = 5
     NEGATED_DIGIT = 6
     NEGATED_WHITESPACE = 7
+    ALPHA = 8
 
     def to_char_set(self):
-        if self == ShorthandCharacterClass.WORD:
-            return set('_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        if self == ShorthandCharacterClass.ALPHA:
+            return set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        elif self == ShorthandCharacterClass.WORD:
+            return set('_')\
+                .union(ShorthandCharacterClass.ALPHA.to_char_set())\
+                .union(ShorthandCharacterClass.DIGIT.to_char_set())
         elif self == ShorthandCharacterClass.DIGIT:
             return set('0123456789')
         elif self == ShorthandCharacterClass.WHITESPACE:
