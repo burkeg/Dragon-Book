@@ -64,22 +64,22 @@ class TestSimulator(TestCase):
         }
 
         negative_tests = {
-            # r'(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],
-            # r'(a|b)*abb': ['bb', 'aaabaaa', 'baaaab', 'ababa'],
-            # r'a*b*a*b*': ['baba', 'bbbabbbaaa', 'ababa'],
-            # r'a+': [''],
-            # r'a?': ['aa'],
-            # r'[ab]': [''],
-            # r'[^\S\s]': [''],
-            # r'[]': ['literally anything'],
-            # r'[^a-c^]': ['a', 'b', 'c', '^'],
-            # r'a{1,}': [''],
-            # r'a{0,1}': ['aa', 'aaa'],
-            # r'a{0,2}': ['aaa', 'aaaa'],
-            # r'a{0,8}': ['aaaaaaaaa', 'aaaaaaaaaa', 'aaaaaaaaaaa', ],
-            # r'a{1,8}': ['', 'aaaaaaaaa', 'aaaaaaaaaa', 'aaaaaaaaaaa', ],
-            # r'a{5,8}': ['', 'a', 'aa', 'aaa', 'aaaa', 'aaaaaaaaa','aaaaaaaaaa',],
-            # r'a{5,}': ['', 'a', 'aa', 'aaa', 'aaaa'],
+            r'(a|b)*a': ['', 'aaaaaab', 'baaaab', 'abaab'],
+            r'(a|b)*abb': ['bb', 'aaabaaa', 'baaaab', 'ababa'],
+            r'a*b*a*b*': ['baba', 'bbbabbbaaa', 'ababa'],
+            r'a+': [''],
+            r'a?': ['aa'],
+            r'[ab]': [''],
+            r'[^\S\s]': [''],
+            r'[]': ['literally anything'],
+            r'[^a-c^]': ['a', 'b', 'c', '^'],
+            r'a{1,}': [''],
+            r'a{0,1}': ['aa', 'aaa'],
+            r'a{0,2}': ['aaa', 'aaaa'],
+            r'a{0,8}': ['aaaaaaaaa', 'aaaaaaaaaa', 'aaaaaaaaaaa', ],
+            r'a{1,8}': ['', 'aaaaaaaaa', 'aaaaaaaaaa', 'aaaaaaaaaaa', ],
+            r'a{5,8}': ['', 'a', 'aa', 'aaa', 'aaaa', 'aaaaaaaaa','aaaaaaaaaa',],
+            r'a{5,}': ['', 'a', 'aa', 'aaa', 'aaaa'],
         }
 
         with self.subTest(simulator='NFA'):

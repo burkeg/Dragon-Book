@@ -137,73 +137,40 @@ class LexicalAnalyzer:
 
             input_elements = input_elements[chars_consumed:]
 
+    @staticmethod
+    def default_lexer():
+        reg_def = RegExpr.RegularDefinition.from_string(
+            r'ws \s+' + '\n' +
+            r'letter_ [a-zA-Z_]' + '\n' +
+            r'if if' + '\n' +
+            r'else else' + '\n' +
+            r'while while' + '\n' +
+            r'arithmetic_operator (\+|-|\*|/)' + '\n' +
+            r'rel_operator (==|!=|<|<=|>|>=)' + '\n' +
+            r'assignment_operator (=|\+=|-=|\*=|/=)' + '\n' +
+            r'bracket_operator (\(|\)|\[|\]|\{|\})' + '\n' +
+            r'end_imperitive_statement ;' + '\n' +
+            r'id {letter_}({letter_}|\d)*' + '\n' +
+            r'number \d+(\.\d+)?(E[+-]?\d+)?')
+        symbol_table_manager = SymbolTable.SymbolTableManager()
+
+        translation_rules = [
+            (Automata.Element(reg_def['if']), Tokens.IfToken.action),
+            (Automata.Element(reg_def['else']), Tokens.ElseToken.action),
+            (Automata.Element(reg_def['while']), Tokens.WhileToken.action),
+            (Automata.Element(reg_def['arithmetic_operator']), Tokens.ArithmeticOperatorToken.action),
+            (Automata.Element(reg_def['rel_operator']), Tokens.RelationalOperatorToken.action),
+            (Automata.Element(reg_def['assignment_operator']), Tokens.AssignmentOperatorToken.action),
+            (Automata.Element(reg_def['bracket_operator']), Tokens.BracketToken.action),
+            (Automata.Element(reg_def['end_imperitive_statement']), Tokens.EndImperativeStatementToken.action),
+            (Automata.Element(reg_def['id']), Tokens.IDToken.action),
+            (Automata.Element(reg_def['number']), Tokens.NumToken.action),
+        ]
+        return LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
+
+
 def do_stuff():
-    # A -> a*b
-    # B -> b a A
-    # A = RegExpr.from_string('a*b')
-    # before_add_B = RegExpr.from_string('ba')
-    # B = RegExpr(before_add_B.expression + [Element(A)], Alphabet(before_add_B.alphabet.elements + [Element(A)]))
-    # reg_def = RegularDefinition([A, B])
-
-    # reg_def = RegExpr.RegularDefinition.from_string('A baab\nB baab')
-    # symbol_table_manager = SymbolTable.SymbolTableManager()
-    #
-    # def A_action(symbol_table, lexeme):
-    #     assert isinstance(symbol_table, SymbolTable.SymbolTable)
-    #     assert isinstance(lexeme, str)
-    #     new_token = Tokens.Token.Token(Enums.Tag.NUM, '', lexeme)
-    #     symbol_table.create_symbol(new_token)
-    #     return new_token
-    #
-    # def B_action(symbol_table, lexeme):
-    #     assert isinstance(symbol_table, SymbolTable.SymbolTable)
-    #     assert isinstance(lexeme, str)
-    #     new_token = Tokens.Token.Token(Enums.Tag.ID, '', lexeme)
-    #     symbol_table.create_symbol(new_token)
-    #     return new_token
-    #
-    # translation_rules = [(Automata.Element(reg_def['A']), A_action),
-    #                      (Automata.Element(reg_def['B']), B_action)]
-    # lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
-    # for token in lexer.process('baabbaab'):
-    #     print(token)
-    #
-    # print()
-    reg_def = RegExpr.RegularDefinition.from_string(
-        r'delim [ \t\n]' + '\n' +
-        r'ws {delim}+' + '\n' +
-        r'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' +
-        r'letter_ {letter}|_' + '\n' +
-        r'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
-        r'if if' + '\n' +
-        r'else else' + '\n' +
-        r'while while' + '\n' +
-        r'type (int)' + '\n' +
-        r'arithmetic_operator (\+|-|\*|/)' + '\n' +
-        r'rel_operator (==|!=|<|<=|>|>=)' + '\n' +
-        r'assignment_operator (=|\+=|-=|\*=|/=)' + '\n' +
-        r'bracket_operator (\(|\)|\[|\]|\{|\})' + '\n' +
-        r'end_imperitive_statement ;' + '\n' +
-        r'id {letter_}({letter_}|{digit})*' + '\n' +
-        r'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?')
-    symbol_table_manager = SymbolTable.SymbolTableManager()
-
-
-
-
-    translation_rules = [
-        (Automata.Element(reg_def['if']), Tokens.IfToken.action),
-        (Automata.Element(reg_def['else']), Tokens.ElseToken.action),
-        (Automata.Element(reg_def['while']), Tokens.WhileToken.action),
-        (Automata.Element(reg_def['arithmetic_operator']), Tokens.ArithmeticOperatorToken.action),
-        (Automata.Element(reg_def['rel_operator']), Tokens.RelationalOperatorToken.action),
-        (Automata.Element(reg_def['assignment_operator']), Tokens.AssignmentOperatorToken.action),
-        (Automata.Element(reg_def['bracket_operator']), Tokens.BracketToken.action),
-        (Automata.Element(reg_def['end_imperitive_statement']), Tokens.EndImperativeStatementToken.action),
-        (Automata.Element(reg_def['id']), Tokens.IDToken.action),
-        (Automata.Element(reg_def['number']), Tokens.NumToken.action),
-    ]
-    lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
+    lexer = LexicalAnalyzer.default_lexer()
     tokens = []
     for token in lexer.process('abc + 123; 1E9 += 1 - ab_3452;\n\nif (ten == 10) { a = 4; }'):
         # print(token)
