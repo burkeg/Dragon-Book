@@ -11,27 +11,27 @@ class RegExprParseTree:
         self.left = left
         self.operation = operation
         self.right = right
-        if isinstance(left, Automata.Element) and self.operation != Enums.Operation.IDENTITY:
-            self.left = RegExprParseTree(left, Enums.Operation.IDENTITY)
+        if isinstance(left, Automata.Element) and self.operation != Enums.RegexOperation.IDENTITY:
+            self.left = RegExprParseTree(left, Enums.RegexOperation.IDENTITY)
         if isinstance(right, Automata.Element) and \
-                self.operation != Enums.Operation.IDENTITY and \
-                self.operation != Enums.Operation.QUANTIFIER:
-            self.right = RegExprParseTree(right, Enums.Operation.IDENTITY)
-        assert isinstance(operation, Enums.Operation)
-        if self.operation == Enums.Operation.CONCAT:
+                self.operation != Enums.RegexOperation.IDENTITY and \
+                self.operation != Enums.RegexOperation.QUANTIFIER:
+            self.right = RegExprParseTree(right, Enums.RegexOperation.IDENTITY)
+        assert isinstance(operation, Enums.RegexOperation)
+        if self.operation == Enums.RegexOperation.CONCAT:
             assert isinstance(self.left, RegExprParseTree)
             assert isinstance(self.right, RegExprParseTree)
-        elif self.operation == Enums.Operation.UNION:
+        elif self.operation == Enums.RegexOperation.UNION:
             assert isinstance(self.left, RegExprParseTree)
             assert isinstance(self.right, RegExprParseTree)
-        elif self.operation == Enums.Operation.QUANTIFIER:
+        elif self.operation == Enums.RegexOperation.QUANTIFIER:
             assert isinstance(self.left, RegExprParseTree)
             assert isinstance(self.right, Automata.QuantifierElement)
-        elif self.operation == Enums.Operation.GROUP:
+        elif self.operation == Enums.RegexOperation.GROUP:
             assert isinstance(self.left, RegExprParseTree)
-        elif self.operation == Enums.Operation.IDENTITY:
+        elif self.operation == Enums.RegexOperation.IDENTITY:
             assert isinstance(self.left, Automata.Element)
-        elif self.operation == Enums.Operation.CHAR_CLASS:
+        elif self.operation == Enums.RegexOperation.CHAR_CLASS:
             assert isinstance(self.left, RegExprParseTree)
 
     @staticmethod
@@ -41,8 +41,8 @@ class RegExprParseTree:
         expression = RegExprParseTree.handle_escaped_special_chars(expression)
         expression = RegExprParseTree.handle_grouping(expression)
         expression = RegExprParseTree.handle_quantifiers(expression)
-        expression = RegExprParseTree.handle_union(expression)
         expression = RegExprParseTree.handle_concat(expression)
+        expression = RegExprParseTree.handle_union(expression)
 
         if len(expression) != 1:
             raise Exception('Something went wrong when generating the regex '
@@ -55,7 +55,7 @@ class RegExprParseTree:
         new_expression = []
         for term in expression:
             if isinstance(term, Automata.Element) and not isinstance(term, Automata.QuantifierElement):
-                new_expression.append(RegExprParseTree(term, Enums.Operation.IDENTITY))
+                new_expression.append(RegExprParseTree(term, Enums.RegexOperation.IDENTITY))
             else:
                 new_expression.append(term)
         return new_expression
@@ -112,7 +112,7 @@ class RegExprParseTree:
                             continue
 
                         assert isinstance(expression_inside_parens, RegExprParseTree), error_str
-                        assert expression_inside_parens.operation == Enums.Operation.IDENTITY, error_str
+                        assert expression_inside_parens.operation == Enums.RegexOperation.IDENTITY, error_str
                         elem = expression_inside_parens.left
                         assert isinstance(elem, Automata.Element), error_str
                         assert isinstance(elem, Automata.EscapedCharElement) or \
@@ -168,7 +168,7 @@ class RegExprParseTree:
     def handle_escaped_special_chars(expression):
         new_expression = []
         for term in expression:
-            if isinstance(term, RegExprParseTree) and term.operation == Enums.Operation.IDENTITY:
+            if isinstance(term, RegExprParseTree) and term.operation == Enums.RegexOperation.IDENTITY:
                 elem = term.left
                 if isinstance(elem, Automata.EscapedCharElement):
                     if elem.value == Enums.SpecialEscapedCharacter.TAB:
@@ -197,7 +197,7 @@ class RegExprParseTree:
                                [Enums.SpecialCharacter.RIGHT_SQUARE_BRACKET]
                     new_expression.append(RegExprParseTree.build_from_expression(elements))
                 else:
-                    new_expression.append(RegExprParseTree(elem, Enums.Operation.IDENTITY))
+                    new_expression.append(RegExprParseTree(elem, Enums.RegexOperation.IDENTITY))
             else:
                 new_expression.append(term)
         return RegExprParseTree.handle_identity(new_expression)
@@ -224,7 +224,7 @@ class RegExprParseTree:
                     expressions_outside_parens = expression[i+2:]
                     tree_inside_parens = RegExprParseTree(
                         RegExprParseTree.build_from_expression(expressions_inside_parens),
-                        Enums.Operation.GROUP)
+                        Enums.RegexOperation.GROUP)
                     return RegExprParseTree.handle_grouping(
                         [tree_inside_parens] + expressions_outside_parens)
         else:
@@ -241,7 +241,7 @@ class RegExprParseTree:
         if isinstance(expression[1], Automata.QuantifierElement):
             quant_target = RegExprParseTree(
                 expression[0],
-                Enums.Operation.QUANTIFIER,
+                Enums.RegexOperation.QUANTIFIER,
                 expression[1])
             return RegExprParseTree.handle_quantifiers(
                 [quant_target] + expression[2:])
@@ -257,7 +257,7 @@ class RegExprParseTree:
             return expression
 
         if expression[1] == Enums.SpecialCharacter.UNION:
-            union_target = RegExprParseTree(expression[0], Enums.Operation.UNION, expression[2])
+            union_target = RegExprParseTree(expression[0], Enums.RegexOperation.UNION, expression[2])
             return RegExprParseTree.handle_union(
                 [union_target] + expression[3:])
         else:
@@ -271,9 +271,18 @@ class RegExprParseTree:
         if len(expression) == 1:
             return expression
 
-        concat_target = RegExprParseTree(expression[0], Enums.Operation.CONCAT, expression[1])
-        return RegExprParseTree.handle_concat(
-            [concat_target] + expression[2:])
+        if expression[0] != Enums.SpecialCharacter.UNION and \
+            expression[1] != Enums.SpecialCharacter.UNION:
+            concat_target = RegExprParseTree(expression[0], Enums.RegexOperation.CONCAT, expression[1])
+            return RegExprParseTree.handle_concat(
+                [concat_target] + expression[2:])
+        else:
+            return [expression[0]] + \
+                   RegExprParseTree.handle_concat(expression[1:])
+
+        # concat_target = RegExprParseTree(expression[0], Enums.RegexOperation.CONCAT, expression[1])
+        # return RegExprParseTree.handle_concat(
+        #     [concat_target] + expression[2:])
 
 
 class RegExpr:
@@ -401,14 +410,14 @@ class RegExpr:
     def recursive_parse_tree_to_NFA(parse_tree):
         # https://en.wikipedia.org/wiki/Thompson%27s_construction
         assert isinstance(parse_tree, RegExprParseTree)
-        if parse_tree.operation == Enums.Operation.IDENTITY:
+        if parse_tree.operation == Enums.RegexOperation.IDENTITY:
             if isinstance(parse_tree.left, Automata.Element) and \
                     isinstance(parse_tree.left.value, RegExpr):
                 return parse_tree.left.value.to_NFA()
             return Automata.NFAOneStartOneEnd.basis(parse_tree.left)
 
         # r = s|t
-        if parse_tree.operation == Enums.Operation.UNION:
+        if parse_tree.operation == Enums.RegexOperation.UNION:
             N_s = RegExpr.recursive_parse_tree_to_NFA(parse_tree.left)
             N_t = RegExpr.recursive_parse_tree_to_NFA(parse_tree.right)
 
@@ -426,7 +435,7 @@ class RegExpr:
             start_state.add_outgoing(N_t_start_transition)
             return Automata.NFAOneStartOneEnd(start_state, N_s.alphabet.union(N_t.alphabet), end_state)
         # r = st
-        elif parse_tree.operation == Enums.Operation.CONCAT:
+        elif parse_tree.operation == Enums.RegexOperation.CONCAT:
             N_s = RegExpr.recursive_parse_tree_to_NFA(parse_tree.left)
             N_t = RegExpr.recursive_parse_tree_to_NFA(parse_tree.right)
 
@@ -437,7 +446,7 @@ class RegExpr:
                     N_s.stop.add_outgoing(transition)
 
             return Automata.NFAOneStartOneEnd(N_s.start, N_s.alphabet.union(N_t.alphabet), N_t.stop)
-        elif parse_tree.operation == Enums.Operation.QUANTIFIER:
+        elif parse_tree.operation == Enums.RegexOperation.QUANTIFIER:
             quantifier = parse_tree.right
             assert isinstance(quantifier, Automata.QuantifierElement)
             # r = s* AKA s{0,inf}
@@ -501,7 +510,7 @@ class RegExpr:
                 N_s_0_m_minus_1 = RegExpr.recursive_parse_tree_to_NFA(
                     RegExprParseTree(
                         parse_tree.left,
-                        Enums.Operation.QUANTIFIER,
+                        Enums.RegexOperation.QUANTIFIER,
                         Automata.QuantifierElement(start=0, stop=quantifier.stop - 1)))
                 N_s_0_m_minus_1.stop.accepting = False
 
@@ -526,7 +535,7 @@ class RegExpr:
                 N_s_0_n_minus_1_m_minus_1 = RegExpr.recursive_parse_tree_to_NFA(
                     RegExprParseTree(
                         parse_tree.left,
-                        Enums.Operation.QUANTIFIER,
+                        Enums.RegexOperation.QUANTIFIER,
                         Automata.QuantifierElement(start=quantifier.start - 1, stop=quantifier.stop - 1)))
                 N_s_0_n_minus_1_m_minus_1.stop.accepting = False
 
@@ -543,7 +552,7 @@ class RegExpr:
 
                 return Automata.NFAOneStartOneEnd(start_state, N_s.alphabet, end_state)
         # r = (s)
-        elif parse_tree.operation == Enums.Operation.GROUP:
+        elif parse_tree.operation == Enums.RegexOperation.GROUP:
             return RegExpr.recursive_parse_tree_to_NFA(parse_tree.left)
         else:
             raise Exception('Hey dummy you forgot to implement the graph operation for an operator')

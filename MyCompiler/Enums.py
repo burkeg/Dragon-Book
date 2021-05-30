@@ -2,7 +2,7 @@ import string
 from enum import Enum
 
 
-class Operation(Enum):
+class RegexOperation(Enum):
     CONCAT = 1
     UNION = 2
     # KLEENE = 3
@@ -12,6 +12,32 @@ class Operation(Enum):
     # QUESTION = 7
     CHAR_CLASS = 8
     QUANTIFIER = 9
+
+
+class Operation(Enum):
+    PLUS = 1
+    MINUS = 2
+    MULTIPLY = 3
+    DIVIDE = 4
+    EQUALS = 5
+    NOT_EQUALS = 6
+    LT = 7
+    LTE = 8
+    GT = 9
+    GTE = 10
+    ASSIGN = 11
+    PLUS_EQUAL = 12
+    MINUS_EQUAL = 13
+    TIMES_EQUAL = 14
+    DIVIDE_EQUAL = 15
+    LEFT_PAREN = 16
+    RIGHT_PAREN = 17
+    LEFT_BRACKET = 18
+    RIGHT_BRACKET = 19
+    LEFT_CURLY = 20
+    RIGHT_CURLY = 21
+    ACCESS = 22
+    END_IMPERATIVE = 23
 
 
 class SpecialCharacter(Enum):
@@ -114,10 +140,3 @@ class SpecialEscapedCharacter(Enum):
             return '\n'
         raise Exception('Hey dummy you forgot to add a string representation')
     __repr__ = __str__
-
-
-class Tag(Enum):
-    NUM = 1,
-    ID = 2,
-    TRUE = 3,
-    FALSE = 4

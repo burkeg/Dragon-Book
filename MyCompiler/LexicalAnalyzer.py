@@ -1,11 +1,13 @@
+import math
+import pprint as pp
+from inspect import signature
+
 import Automata
 import AutomataAlgorithms
 import Enums
 import RegExpr
 import SymbolTable
-from inspect import signature
-import Tokens.Token
-from collections.abc import Iterable
+import Tokens
 
 
 class LexicalAnalyzer:
@@ -56,8 +58,15 @@ class LexicalAnalyzer:
 
     def _prepare_automata(self):
         self._d_i_to_action = dict()
+        self._d_i_to_priority = dict()
+        for d_i in self.regular_definition.regular_expressions:
+            self._d_i_to_priority[d_i] = math.inf
+
+        priority = 0
         for d_i, action in self.translation_rules:
             self._d_i_to_action[d_i.value] = action
+            self._d_i_to_priority[d_i.value] = priority
+            priority += 1
 
         # We need to combine all original NFAs into a single one
         root = Automata.NFAState('start')
@@ -112,71 +121,21 @@ class LexicalAnalyzer:
             for i, accepting_states in enumerate(reversed(match_history)):
                 # assert isinstance(accepted_states, set)
                 if len(accepting_states) > 0:
-                    accepted_states = accepting_states
+                    accepted_states = list(accepting_states)
                     chars_consumed = len(match_history) - i
                     break
 
-            producing_state = None
-            if len(accepted_states) > 1:
-                # We have to decide between multiple productions. The winner is the one declared first.
-                for accepted_state in accepted_states:
-                    if producing_state is not None:
-                        break
-                    for d_i in self.regular_definition.regular_expressions:
-                        if producing_state is not None:
-                            break
-                        for d_i_priority in self.regular_definition.regular_expressions:
-                            # Skip over expressions that don't have productions associated with them.
-                            if d_i_priority not in self._d_i_to_action.keys():
-                                continue
-                            if d_i == d_i_priority:
-                                producing_state = accepted_state
-                                break
-            else:
-                # 1 and only state:
-                producing_state = accepted_states.pop()
+            accepted_states.sort(key=lambda state: self._d_i_to_priority[state.d_i])
+            producing_state = accepted_states.pop(0)
 
             assert isinstance(producing_state, Automata.ProductionState)
             lexeme_elements = input_elements[:chars_consumed]
             lexeme = ''.join([element.value for element in lexeme_elements])
             assert isinstance(self.symbol_table_manager, SymbolTable.SymbolTableManager)
-            print(producing_state.action)
-            produced_token = producing_state.action(self.symbol_table_manager.curr_table(), lexeme)
-            for i in range(100):
-                print(i)
-                producing_state.action(self.symbol_table_manager.curr_table(), lexeme)
-            print(produced_token)
-            if produced_token:
-                print('True')
-            else:
-                print('False')
-            if produced_token is not None:
-                yield produced_token
+            if token := producing_state.action(self.symbol_table_manager.curr_table(), lexeme):
+                yield token
 
             input_elements = input_elements[chars_consumed:]
-
-
-
-
-
-
-
-
-def num_action(symbol_table, lexeme):
-    assert isinstance(symbol_table, SymbolTable.SymbolTable)
-    assert isinstance(lexeme, str)
-    new_token = Tokens.Token.Token(Enums.Tag.NUM, '', lexeme)
-    symbol_table.create_symbol(new_token)
-    return new_token
-
-def ID_action(symbol_table, lexeme):
-    print("entering ID action")
-    assert isinstance(symbol_table, SymbolTable.SymbolTable)
-    assert isinstance(lexeme, str)
-    new_token = Tokens.Token.Token(Enums.Tag.ID, '', lexeme)
-    symbol_table.create_symbol(new_token)
-    print(f'Producing token: {new_token}')
-    return new_token
 
 def do_stuff():
     # A -> a*b
@@ -210,31 +169,47 @@ def do_stuff():
     #     print(token)
     #
     # print()
-    # reg_def = RegExpr.RegularDefinition.from_string(r'delim [ \t\n]' + '\n' + \
-    #     r'ws {delim}+' + '\n' + \
-    #     r'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' + \
-    #     r'letter_ {letter}|_' + '\n' + \
-    #     r'digit 0|1|2|3|4|5|6|7|8|9' + '\n' + \
-    #     r'id {letter_}({letter_}|{digit})*' + '\n' + \
-    #     r'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?')
     reg_def = RegExpr.RegularDefinition.from_string(
-        r'letter a|b' + '\n' + \
-        r'digit 0|1' + '\n' + \
-        r'id {letter}({letter}|{digit})*')
+        r'delim [ \t\n]' + '\n' +
+        r'ws {delim}+' + '\n' +
+        r'letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z' + '\n' +
+        r'letter_ {letter}|_' + '\n' +
+        r'digit 0|1|2|3|4|5|6|7|8|9' + '\n' +
+        r'if if' + '\n' +
+        r'else else' + '\n' +
+        r'while while' + '\n' +
+        r'type (int)' + '\n' +
+        r'arithmetic_operator (\+|-|\*|/)' + '\n' +
+        r'rel_operator (==|!=|<|<=|>|>=)' + '\n' +
+        r'assignment_operator (=|\+=|-=|\*=|/=)' + '\n' +
+        r'bracket_operator (\(|\)|\[|\]|\{|\})' + '\n' +
+        r'end_imperitive_statement ;' + '\n' +
+        r'id {letter_}({letter_}|{digit})*' + '\n' +
+        r'number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?')
     symbol_table_manager = SymbolTable.SymbolTableManager()
 
+
+
+
     translation_rules = [
-        (Automata.Element(reg_def['id']), ID_action),
-        # (Automata.Element(reg_def['number']), num_action)
+        (Automata.Element(reg_def['if']), Tokens.IfToken.action),
+        (Automata.Element(reg_def['else']), Tokens.ElseToken.action),
+        (Automata.Element(reg_def['while']), Tokens.WhileToken.action),
+        (Automata.Element(reg_def['arithmetic_operator']), Tokens.ArithmeticOperatorToken.action),
+        (Automata.Element(reg_def['rel_operator']), Tokens.RelationalOperatorToken.action),
+        (Automata.Element(reg_def['assignment_operator']), Tokens.AssignmentOperatorToken.action),
+        (Automata.Element(reg_def['bracket_operator']), Tokens.BracketToken.action),
+        (Automata.Element(reg_def['end_imperitive_statement']), Tokens.EndImperativeStatementToken.action),
+        (Automata.Element(reg_def['id']), Tokens.IDToken.action),
+        (Automata.Element(reg_def['number']), Tokens.NumToken.action),
     ]
     lexer = LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
     tokens = []
-    for token in lexer.process('a'):
+    for token in lexer.process('abc + 123; 1E9 += 1 - ab_3452;\n\nif (ten == 10) { a = 4; }'):
         # print(token)
         tokens.append(token)
 
-    print(tokens)
-    assert len(tokens) == 1
+    pp.pprint(tokens)
 
 
 if __name__ == '__main__':
