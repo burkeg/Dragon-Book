@@ -167,6 +167,37 @@ class LexicalAnalyzer:
         ]
         return LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
 
+    @staticmethod
+    def grammar_lexer():
+        reg_def = RegExpr.RegularDefinition.from_string(
+            r'ws \s+' + '\n' +
+            r'letter_ [a-zA-Z_]' + '\n' +
+            r'if if' + '\n' +
+            r'else else' + '\n' +
+            r'while while' + '\n' +
+            r'arithmetic_operator (\+|-|\*|/)' + '\n' +
+            r'rel_operator (==|!=|<|<=|>|>=)' + '\n' +
+            r'assignment_operator (=|\+=|-=|\*=|/=)' + '\n' +
+            r'bracket_operator (\(|\)|\[|\]|\{|\})' + '\n' +
+            r'end_imperitive_statement ;' + '\n' +
+            r'id {letter_}({letter_}|\d)*' + '\n' +
+            r'number \d+(\.\d+)?(E[+-]?\d+)?')
+        symbol_table_manager = SymbolTable.SymbolTableManager()
+
+        translation_rules = [
+            (Automata.Element(reg_def['if']), Tokens.IfToken.action),
+            (Automata.Element(reg_def['else']), Tokens.ElseToken.action),
+            (Automata.Element(reg_def['while']), Tokens.WhileToken.action),
+            (Automata.Element(reg_def['arithmetic_operator']), Tokens.ArithmeticOperatorToken.action),
+            (Automata.Element(reg_def['rel_operator']), Tokens.RelationalOperatorToken.action),
+            (Automata.Element(reg_def['assignment_operator']), Tokens.AssignmentOperatorToken.action),
+            (Automata.Element(reg_def['bracket_operator']), Tokens.BracketToken.action),
+            (Automata.Element(reg_def['end_imperitive_statement']), Tokens.EndImperativeStatementToken.action),
+            (Automata.Element(reg_def['id']), Tokens.IDToken.action),
+            (Automata.Element(reg_def['number']), Tokens.NumToken.action),
+        ]
+        return LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
+
 
 def do_stuff():
     lexer = LexicalAnalyzer.default_lexer()
