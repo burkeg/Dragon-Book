@@ -4,7 +4,6 @@ from inspect import signature
 
 import Automata
 import AutomataAlgorithms
-import Enums
 import RegExpr
 import SymbolTable
 import Tokens

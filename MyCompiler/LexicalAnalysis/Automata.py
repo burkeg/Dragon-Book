@@ -183,7 +183,7 @@ class State:
 
 
 class NFAState(State):
-    # Nondeterministic Finite Automata
+    # Nondeterministic Finite LexicalAnalysis
     # outgoing is a dictionary of key value pairs where the keys are of type Element
     # and the values are lists Transitions
     def __init__(self, name=None, accepting=False, outgoing=None, ID=None):
@@ -211,7 +211,7 @@ class ProductionState(NFAState):
 
 
 class DFAState(State):
-    # Deterministic Finite Automata
+    # Deterministic Finite LexicalAnalysis
     # outgoing is a dictionary of key value pairs where the keys are of type Element
     # and the values of type Transition
     def __init__(self, name=None, accepting=False, outgoing=None, ID=None):
