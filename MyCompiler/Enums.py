@@ -38,6 +38,13 @@ class Operation(Enum):
     RIGHT_CURLY = 21
     ACCESS = 22
     END_IMPERATIVE = 23
+    BIT_AND = 24
+    BIT_OR = 25
+    BIT_XOR = 26
+    LOGIC_AND = 27
+    LOGIC_OR = 28
+    SINGLE_QUOTE = 29
+    DOUBLE_QUOTE = 30
 
 
 class SpecialCharacter(Enum):

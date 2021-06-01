@@ -14,24 +14,33 @@ class Token:
     __repr__ = __str__
 
     @classmethod
-    def action(cls, symbol_table, lexeme):
+    def lex_action(cls, symbol_table, lexeme):
         assert isinstance(symbol_table, SymbolTable.SymbolTable)
         assert isinstance(lexeme, str)
         new_token = cls.create(lexeme)
         symbol_table.create_symbol(new_token)
         return new_token
 
-    @staticmethod
-    def create(lexeme):
-        raise NotImplementedError()
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'id':
+            return IDToken('')
+        elif lexeme == 'num':
+            return NumToken('')
+        for subclass in cls.__subclasses__():
+            if token := subclass.create(lexeme):
+                if isinstance(token, IDToken) or isinstance(token, NumToken):
+                    continue
+                return token
+        raise Exception('Not a valid lexeme for this token')
 
 
 class IDToken(Token):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         return IDToken(lexeme)
 
 
@@ -39,8 +48,8 @@ class NumToken(Token):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         return NumToken(lexeme)
 
 
@@ -62,8 +71,8 @@ class RelationalOperatorToken(Token):
         assert isinstance(value, Enums.Operation), 'Unknown relational operator'
         super().__init__(lexeme, value)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         if lexeme == '==':
             return EqualsToken()
         elif lexeme == '!=':
@@ -77,7 +86,7 @@ class RelationalOperatorToken(Token):
         elif lexeme == '>=':
             return GTEToken()
         else:
-            raise Exception('Not a valid lexeme for this token')
+            return None
 
 
 class EqualsToken(RelationalOperatorToken):
@@ -121,11 +130,11 @@ class ArithmeticOperatorToken(Token):
             value = Enums.Operation.MULTIPLY
         elif lexeme == '/':
             value = Enums.Operation.DIVIDE
-        assert isinstance(value, Enums.Operation), 'Unknown relational operator'
+        assert isinstance(value, Enums.Operation), 'Unknown arithmetic operator'
         super().__init__(lexeme, value)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         if lexeme == '+':
             return PlusToken()
         elif lexeme == '-':
@@ -135,7 +144,7 @@ class ArithmeticOperatorToken(Token):
         elif lexeme == '/':
             return DivideToken()
         else:
-            raise Exception('Not a valid lexeme for this token')
+            return None
 
 
 class PlusToken(ArithmeticOperatorToken):
@@ -158,6 +167,75 @@ class DivideToken(ArithmeticOperatorToken):
         super().__init__('/')
 
 
+class LogicOperatorToken(Token):
+    def __init__(self, lexeme):
+        value = None
+        if lexeme == '&&':
+            value = Enums.Operation.LOGIC_AND
+        elif lexeme == '||':
+            value = Enums.Operation.LOGIC_OR
+        assert isinstance(value, Enums.Operation), 'Unknown logical operator'
+        super().__init__(lexeme, value)
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '&&':
+            return LogicAndToken()
+        elif lexeme == '||':
+            return LogicOrToken()
+        else:
+            return None
+
+
+class LogicAndToken(LogicOperatorToken):
+    def __init__(self):
+        super().__init__('&&')
+
+
+class LogicOrToken(LogicOperatorToken):
+    def __init__(self):
+        super().__init__('||')
+
+
+class BitwiseOperatorToken(Token):
+    def __init__(self, lexeme):
+        value = None
+        if lexeme == '&':
+            value = Enums.Operation.BIT_AND
+        elif lexeme == '|':
+            value = Enums.Operation.BIT_OR
+        elif lexeme == '^':
+            value = Enums.Operation.BIT_XOR
+        assert isinstance(value, Enums.Operation), 'Unknown bitwise operator'
+        super().__init__(lexeme, value)
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '&':
+            return BitwiseAndToken()
+        elif lexeme == '|':
+            return BitwiseOrToken()
+        elif lexeme == '^':
+            return BitwiseXorToken()
+        else:
+            return None
+
+
+class BitwiseAndToken(BitwiseOperatorToken):
+    def __init__(self):
+        super().__init__('&')
+
+
+class BitwiseOrToken(BitwiseOperatorToken):
+    def __init__(self):
+        super().__init__('|')
+
+
+class BitwiseXorToken(BitwiseOperatorToken):
+    def __init__(self):
+        super().__init__('^')
+
+
 class AssignmentOperatorToken(Token):
     def __init__(self, lexeme):
         value = None
@@ -171,11 +249,11 @@ class AssignmentOperatorToken(Token):
             value = Enums.Operation.TIMES_EQUAL
         elif lexeme == '/=':
             value = Enums.Operation.DIVIDE_EQUAL
-        assert isinstance(value, Enums.Operation), 'Unknown relational operator'
+        assert isinstance(value, Enums.Operation), 'Unknown assignment operator'
         super().__init__(lexeme, value)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         if lexeme == '=':
             return AssignToken()
         elif lexeme == '+=':
@@ -187,7 +265,7 @@ class AssignmentOperatorToken(Token):
         elif lexeme == '/=':
             return DivideEqualsToken()
         else:
-            raise Exception('Not a valid lexeme for this token')
+            return None
 
 
 class AssignToken(AssignmentOperatorToken):
@@ -230,11 +308,11 @@ class BracketToken(Token):
             value = Enums.Operation.LEFT_CURLY
         elif lexeme == '}':
             value = Enums.Operation.RIGHT_CURLY
-        assert isinstance(value, Enums.Operation), 'Unknown relational operator'
+        assert isinstance(value, Enums.Operation), 'Unknown bracket'
         super().__init__(lexeme)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         if lexeme == '(':
             return LParenToken()
         elif lexeme == ')':
@@ -248,7 +326,7 @@ class BracketToken(Token):
         elif lexeme == '}':
             return RCurlyToken()
         else:
-            raise Exception('Not a valid lexeme for this token')
+            return None
 
 
 class LParenToken(BracketToken):
@@ -281,33 +359,36 @@ class RCurlyToken(BracketToken):
         super().__init__('}')
 
 
-class EndImperativeStatementToken(Token):
-    def __init__(self, lexeme):
-        value = None
-        if lexeme == ';':
-            value = Enums.Operation.END_IMPERATIVE
-        assert isinstance(value, Enums.Operation), 'Unknown relational operator'
-        super().__init__(';', value)
+class EndStatementToken(Token):
+    def __init__(self):
+        super().__init__(';')
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         if lexeme == ';':
             return EndStatementToken()
         else:
-            raise Exception('Not a valid lexeme for this token')
+            return None
 
 
-class EndStatementToken(EndImperativeStatementToken):
+class ColonToken(Token):
     def __init__(self):
-        super().__init__(';')
+        super().__init__(':')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == ':':
+            return ColonToken()
+        else:
+            return None
 
 
 class KeywordToken(Token):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
-    @staticmethod
-    def create(lexeme):
+    @classmethod
+    def create(cls, lexeme):
         if lexeme == 'if':
             return IfToken()
         elif lexeme == 'if':
@@ -317,7 +398,7 @@ class KeywordToken(Token):
         elif lexeme == 'while':
             return WhileToken()
         else:
-            raise Exception('Not a valid lexeme for this token')
+            return None
 
 
 class IfToken(KeywordToken):
@@ -333,3 +414,46 @@ class ElseToken(KeywordToken):
 class WhileToken(KeywordToken):
     def __init__(self):
         super().__init__(lexeme='while')
+
+
+class QuoteToken(Token):
+    def __init__(self, lexeme):
+        value = None
+        if lexeme == "'":
+            value = Enums.Operation.SINGLE_QUOTE
+        elif lexeme == '"':
+            value = Enums.Operation.DOUBLE_QUOTE
+        assert isinstance(value, Enums.Operation), 'Unknown quote'
+        super().__init__(lexeme)
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == "'":
+            return SingleQuoteToken()
+        elif lexeme == '"':
+            return DoubleQuoteToken()
+        else:
+            return None
+
+
+class SingleQuoteToken(QuoteToken):
+    def __init__(self):
+        super().__init__("'")
+
+
+class DoubleQuoteToken(QuoteToken):
+    def __init__(self):
+        super().__init__('"')
+
+
+class ActionToken(Token):
+    def __init__(self, name, action=None):
+        self.name = name
+        super().__init__('', value=action)
+
+
+def do_something():
+    print(Token.create('+='))
+
+if __name__ == '__main__':
+    do_something()

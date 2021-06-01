@@ -28,8 +28,8 @@ class TestLexicalAnalyzer(TestCase):
         symbol_table_manager = SymbolTable.SymbolTableManager()
 
         translation_rules = [
-            (Automata.Element(reg_def['id']), Tokens.IDToken.action),
-            (Automata.Element(reg_def['number']), Tokens.NumToken.action)
+            (Automata.Element(reg_def['id']), Tokens.IDToken.lex_action),
+            (Automata.Element(reg_def['number']), Tokens.NumToken.lex_action)
         ]
         lexer = LexicalAnalyzer.LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
         for case in test_cases:
@@ -57,6 +57,13 @@ class TestLexicalAnalyzer(TestCase):
         Minus = Tokens.MinusToken
         Mult = Tokens.MultiplyToken
         Div = Tokens.DivideToken
+        Logic = Tokens.LogicOperatorToken
+        LAnd = Tokens.LogicAndToken
+        LOr = Tokens.LogicOrToken
+        Bit = Tokens.BitwiseOperatorToken
+        BAnd = Tokens.BitwiseAndToken
+        BOr = Tokens.BitwiseOrToken
+        BXor = Tokens.BitwiseXorToken
         Assignment = Tokens.AssignmentOperatorToken
         Assign = Tokens.AssignToken
         PlusEq = Tokens.PlusEqualsToken
@@ -70,12 +77,13 @@ class TestLexicalAnalyzer(TestCase):
         RBracket = Tokens.RBracketToken
         LCurly = Tokens.LCurlyToken
         RCurly = Tokens.RCurlyToken
-        EndStatement = Tokens.EndImperativeStatementToken
+        EndStatement = Tokens.EndStatementToken
         EndStmt = Tokens.EndStatementToken
         Keyword = Tokens.KeywordToken
         If = Tokens.IfToken
         Else = Tokens.ElseToken
         While = Tokens.WhileToken
+        Colon = Tokens.ColonToken
         test_cases = {
             'aaa': [ID],
             'A': [ID],
@@ -91,10 +99,12 @@ class TestLexicalAnalyzer(TestCase):
             '{}{{[]}}': [Bracket, Bracket, Bracket, Bracket, Bracket, Bracket, Bracket],
             'a <\n \t\t\n 5': [ID, Relop, Num],
             '<>>=<<=>': [Relop, Relop, Relop, Relop, Relop, Relop],
-            'a 1.3E+2 == != < <= > >= + - * / = += -= *= /= ( ) [ ] { } ; if else while':
+            '&^|': [Bit, Bit, Bit, ],
+            '&&||': [Logic, Logic, ],
+            'a 1.3E+2 == != < <= > >= + - * / = += -= *= /= ( ) [ ] { } ; if else while && || & | ^ :':
                 [ID, Num, Eq, NotEq, LT, LTE, GT, GTE, Plus, Minus, Mult, Div, Assign, PlusEq,
                  MinusEq, TimesEq, DivEq, LParen, RParen, LBracket, RBracket, LCurly, RCurly,
-                 EndStmt, If, Else, While],
+                 EndStmt, If, Else, While, LAnd, LOr, BAnd, BOr, BXor, Colon],
         }
 
         lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()

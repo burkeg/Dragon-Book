@@ -1,5 +1,8 @@
 import re
 
+import Tokens
+
+
 class GrammarSymbol:
     def __init__(self, string):
         self.string = string
@@ -18,8 +21,23 @@ class GrammarSymbol:
 
 
 class Terminal(GrammarSymbol):
-    pass
+    def __init__(self, string=None, token=None):
+        assert string is not None or token is not None
+        if token is not None and string is not None:
+            assert isinstance(token, Tokens.Token)
+            self.token = token
+            self.string = string
+        elif string is not None:
+            self.token = Tokens.Token.create(string)
+            self.string = string
+        else:
+            raise Exception('Not a valid terminal')
+        super().__init__(self.token.__class__.__name__)
 
+
+class ActionTerminal(Terminal):
+    def __init__(self, action_name, action):
+        super().__init__(action_name, Tokens.ActionToken(action_name, action))
 
 class Nonterminal(GrammarSymbol):
     pass
@@ -32,7 +50,7 @@ class Grammar:
         self.start_symbol = start_symbol    # The starting point for all derivations from this grammar
 
     @staticmethod
-    def from_string(grammar_as_string):
+    def from_string(grammar_as_string, action_dict=None):
         # Nonterminals are strings of \w.
         # Terminals are strings enclosed in quotes.
         # A production is a Nonterminal followed by -> and a list of terminals/nonterminals.
@@ -45,6 +63,8 @@ class Grammar:
         current_nonterminal = None
         for line in grammar_as_string.split('\n'):
             rest_of_line = line.strip()
+            if len(rest_of_line) == 0:
+                continue
             if m := re.match(r'^(\w+) -> (.*)$', rest_of_line):
                 # This is a definition of a nonterminal, let's figure out its name
                 current_nonterminal = Nonterminal(m.group(1))
@@ -64,7 +84,14 @@ class Grammar:
                     rest_of_line = m.group(2).strip()
                 elif m := re.match(r'^\"([^\"]+?)\"(.*)$', rest_of_line):
                     # Found terminal
-                    current_rule.append(Terminal(m.group(1)))
+                    terminal_str = m.group(1)
+                    current_rule.append(Terminal(terminal_str))
+                    rest_of_line = m.group(2).strip()
+                elif m := re.match(r'^{([^{]+?)}(.*)$', rest_of_line):
+                    # Found action
+                    action_terminal_str = m.group(1)
+                    assert action_terminal_str in action_dict.keys(), 'Action not found in action dictionary'
+                    current_rule.append(ActionTerminal(action_terminal_str, action_dict[action_terminal_str]))
                     rest_of_line = m.group(2).strip()
                 elif m := re.match(r'^\|(.*)$', rest_of_line):
                     # shorthand for starting up another production on this line
@@ -82,6 +109,9 @@ class Grammar:
                                for symbol in production])
         terminals = all_rhs_symbols.difference(nonterminals)
         return Grammar(terminals, nonterminals, productions, start_symbol)
+
+    def without_left_recursion(self):
+        pass
 
 
 if __name__ == '__main__':
