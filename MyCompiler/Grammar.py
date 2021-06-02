@@ -1,3 +1,4 @@
+import copy
 import re
 
 import Tokens
@@ -44,10 +45,38 @@ class Nonterminal(GrammarSymbol):
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):
-        self.terminals = terminals          # A list of terminals
-        self.nonterminals = nonterminals    # A list of nonterminals
+        self.terminals = terminals          # A set of terminals
+        self.nonterminals = nonterminals    # A set of nonterminals
         self.productions = productions      # A dictionary of nonterminals to lists of terminals/nonterminals
         self.start_symbol = start_symbol    # The starting point for all derivations from this grammar
+        self.verify()
+
+    def verify(self):
+        assert isinstance(self.terminals, set)
+        assert isinstance(self.terminals, set)
+        assert isinstance(self.productions, dict)
+        for nonterminal, production_list in self.productions.items():
+            assert isinstance(nonterminal, Nonterminal)
+            for production in production_list:
+                assert isinstance(production, list)
+                for item in production:
+                    assert isinstance(item, Terminal) or isinstance(item, Nonterminal)
+
+
+
+    def __copy__(self):
+        new_start_symbol = self.start_symbol
+        new_terminals = copy.copy(self.terminals)
+        new_nonterminals = copy.copy(self.nonterminals)
+        new_productions = dict()
+        for nonterminal, production_list in self.productions.items():
+            productions = [copy.copy(production) for production in production_list]
+            new_productions[nonterminal] = productions
+        return Grammar(
+            terminals=new_terminals,
+            nonterminals=new_nonterminals,
+            productions=new_productions,
+            start_symbol=new_start_symbol)
 
     @staticmethod
     def from_string(grammar_as_string, action_dict=None):
@@ -82,7 +111,7 @@ class Grammar:
                     # Found nonterminal
                     current_rule.append(Nonterminal(m.group(1)))
                     rest_of_line = m.group(2).strip()
-                elif m := re.match(r'^\"([^\"]+?)\"(.*)$', rest_of_line):
+                elif m := re.match(r'^\'([^\']+?)\'(.*)$', rest_of_line):
                     # Found terminal
                     terminal_str = m.group(1)
                     current_rule.append(Terminal(terminal_str))
@@ -111,13 +140,27 @@ class Grammar:
         return Grammar(terminals, nonterminals, productions, start_symbol)
 
     def without_left_recursion(self):
-        pass
+        new_grammar = copy.copy(self)
+        A = list(new_grammar.nonterminals)
+        for i in range(len(A)):
+            for j in range(i):
+                # Replace each production of the form A_i -> A_j y by the
+                # productions A_i -> s_1 y | s_2 y | ... s_k y, where
+                # A_j -> s_1 | s_2 | ... s_k for all current A_j productions
+                if new_grammar.nonterminals[A[i]][0] == A[j]:
+                    print(A[j])
+
+
 
 
 if __name__ == '__main__':
-    with open('Grammars/grammar4.1_augmented.txt', 'r') as file:
-        g = Grammar.from_string(file.read())
+    g = Grammar.from_string(
+        """
+        A -> A 'c' | A 'a' 'd' | 'b' 'd' | epsilon
+        """
+    )
     print('terminals: ', g.terminals)
     print('nonterminals: ', g.nonterminals)
     print('productions: ', g.productions)
     print('start_symbol: ', g.start_symbol)
+    g2 = g.without_left_recursion()

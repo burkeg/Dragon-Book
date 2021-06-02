@@ -7,10 +7,10 @@ class TestGrammar(TestCase):
         grammars = [
             (
                 """
-                E -> E "+" T | T
-                T -> T "*" F
+                E -> E '+' T | T
+                T -> T '*' F
                     | F
-                F -> "(" E ")" | "id"
+                F -> '(' E ')' | 'id'
                 """,
                 {
 
@@ -19,10 +19,10 @@ class TestGrammar(TestCase):
             (
                 """
                 Ep -> E
-                E -> E "+" T | T
-                T -> T "*" F
+                E -> E '+' T | T
+                T -> T '*' F
                     | F
-                F -> "(" E ")" | "id"
+                F -> '(' E ')' | 'id'
                 """,
                 {
 
@@ -31,10 +31,10 @@ class TestGrammar(TestCase):
             (
                 """
                 Ep -> E
-                E -> E "+" {test} T | T
-                T -> T "*" F
+                E -> E '+' {test} T | T
+                T -> T '*' F
                     | F
-                F -> "(" E ")" | "id"
+                F -> '(' E ')' | 'id'
                 """,
                 {
                     'test':

@@ -28,11 +28,15 @@ class Token:
         elif lexeme == 'num':
             return NumToken('')
         for subclass in cls.__subclasses__():
+            if subclass == IDToken or \
+                    subclass == NumToken or \
+                    subclass == ActionToken:
+                continue
             if token := subclass.create(lexeme):
-                if isinstance(token, IDToken) or isinstance(token, NumToken):
-                    continue
                 return token
-        raise Exception('Not a valid lexeme for this token')
+        # last resort, make a generic token with that lexeme
+        return Token(lexeme)
+        # raise Exception('Not a valid lexeme for this token')
 
 
 class IDToken(Token):
@@ -452,8 +456,21 @@ class ActionToken(Token):
         super().__init__('', value=action)
 
 
+class EmptyToken(Token):
+    def __init__(self):
+        super().__init__('')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == "epsilon":
+            return EmptyToken()
+        else:
+            return None
+
+
 def do_something():
     print(Token.create('+='))
+
 
 if __name__ == '__main__':
     do_something()
