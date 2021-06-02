@@ -462,7 +462,7 @@ class EmptyToken(Token):
 
     @classmethod
     def create(cls, lexeme):
-        if lexeme == "epsilon":
+        if lexeme == '\u03B5':
             return EmptyToken()
         else:
             return None

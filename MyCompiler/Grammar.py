@@ -30,10 +30,13 @@ class Terminal(GrammarSymbol):
             self.string = string
         elif string is not None:
             self.token = Tokens.Token.create(string)
-            self.string = string
+            if type(self.token) == Tokens.Token:
+                self.string = f"'{self.token.lexeme}'"
+            else:
+                self.string = string
         else:
             raise Exception('Not a valid terminal')
-        super().__init__(self.token.__class__.__name__)
+        super().__init__(self.string)
 
 
 class ActionTerminal(Terminal):
@@ -156,9 +159,10 @@ class Grammar:
 if __name__ == '__main__':
     g = Grammar.from_string(
         """
-        A -> A 'c' | A 'a' 'd' | 'b' 'd' | epsilon
+        A -> A 'c' | A 'a' 'd' | 'b' 'd' | \u03B5
         """
     )
+    print(g)
     print('terminals: ', g.terminals)
     print('nonterminals: ', g.nonterminals)
     print('productions: ', g.productions)
