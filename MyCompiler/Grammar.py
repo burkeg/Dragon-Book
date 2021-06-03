@@ -23,6 +23,7 @@ class GrammarSymbol:
 
 class Terminal(GrammarSymbol):
     def __init__(self, string=None, token=None):
+        self.token = None
         assert string is not None or token is not None
         if token is not None and string is not None:
             assert isinstance(token, Tokens.Token)
@@ -43,8 +44,11 @@ class ActionTerminal(Terminal):
     def __init__(self, action_name, action):
         super().__init__(action_name, Tokens.ActionToken(action_name, action))
 
+
 class Nonterminal(GrammarSymbol):
-    pass
+    def derive_from(self):
+        return GrammarSymbol(self.string + "'")
+
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):
@@ -54,9 +58,37 @@ class Grammar:
         self.start_symbol = start_symbol    # The starting point for all derivations from this grammar
         self.verify()
 
+    def __str__(self):
+        return '------------------------\n'\
+               f'terminals: {self.terminals}\n'\
+               f'nonterminals: {self.nonterminals}\n'\
+               f'productions: {self.productions}\n'\
+               f'start_symbol: {self.start_symbol}'
+    __repr__ = __str__
+
+    def simplify(self):
+        for A, productions in self.productions.items():
+            new_productions = []
+            for production in productions:
+                new_production = []
+                for term in production:
+                    if isinstance(term, Terminal) and \
+                            isinstance(term.token, Tokens.EmptyToken):
+                        continue
+                    else:
+                        new_production.append(term)
+                if len(new_production) == 1 and new_production[0] == A:
+                    continue
+                elif len(new_production) == 0:
+                    new_productions.append([Terminal(string='ε')])
+                else:
+                    new_productions.append(new_production)
+            self.productions[A] = new_productions
+
+
     def verify(self):
         assert isinstance(self.terminals, set)
-        assert isinstance(self.terminals, set)
+        assert isinstance(self.nonterminals, set)
         assert isinstance(self.productions, dict)
         for nonterminal, production_list in self.productions.items():
             assert isinstance(nonterminal, Nonterminal)
@@ -64,8 +96,6 @@ class Grammar:
                 assert isinstance(production, list)
                 for item in production:
                     assert isinstance(item, Terminal) or isinstance(item, Nonterminal)
-
-
 
     def __copy__(self):
         new_start_symbol = self.start_symbol
@@ -150,21 +180,72 @@ class Grammar:
                 # Replace each production of the form A_i -> A_j y by the
                 # productions A_i -> s_1 y | s_2 y | ... s_k y, where
                 # A_j -> s_1 | s_2 | ... s_k for all current A_j productions
-                if new_grammar.nonterminals[A[i]][0] == A[j]:
-                    print(A[j])
+                replaced_productions = []
+                for production_i in new_grammar.productions[A[i]]:
+                    if production_i[0] == A[j]:
+                        y = production_i[1:]
+                        for s in new_grammar.productions[A[j]]:
+                            replaced_productions.append(s + y)
+                    else:
+                        replaced_productions.append(production_i)
+
+                # eliminate the immediate left recursion among the A_i-productions
+                A_i_productions, A_ip_and_productions = self.remove_immediate_left_recursion(
+                    A=A[i],
+                    productions=replaced_productions)
+
+                new_grammar.productions[A[i]] = A_i_productions
+                if A_ip_and_productions:
+                    A_ip, A_ip_productions = A_ip_and_productions
+                    new_grammar.productions[A_ip] = A_ip_productions
+                    new_grammar.nonterminals.add(A_ip)
+                    new_grammar.terminals.add(Terminal(string='ε'))
+        return new_grammar
 
 
+    @staticmethod
+    def remove_immediate_left_recursion(A, productions):
+        assert isinstance(A, Nonterminal)
+        # Immediate left recursion can be elminated by the following technique, which
+        # works for any number of A-productions. First group the productions as
+        # A -> A alpha_1 | A alpha_2 | ... A alpha_m | beta_1 | beta_2 | ... | beta_n
+        # where no beta_i begins with an A. Then, replace the A-production by
+        # A -> beta_1 A' | beta_2 A' | ... | beta_n A'
+        # A' -> alpha_1 A' | alpha_2 A' | ... | alpha_m A' | ε
+        including_A_i_prefix = [] # productions including alpha
+        not_including_A_i_prefix = [] # productions including beta
+        for production in productions:
+            if production[0] == A:
+                including_A_i_prefix.append(production)
+            else:
+                not_including_A_i_prefix.append(production)
+        if len(including_A_i_prefix) == 0:
+            return productions, None
+
+        A_productions = []
+        Ap_productions = []
+
+        Ap = A.derive_from()
+        for beta in not_including_A_i_prefix:
+            A_productions.append(beta + [Ap])
+
+        for alpha in including_A_i_prefix:
+            Ap_productions.append(
+                alpha[1:] +
+                [Ap])
+        Ap_productions.append([Terminal(string='ε')])
+        return A_productions, (Ap, Ap_productions)
 
 
 if __name__ == '__main__':
     g = Grammar.from_string(
         """
-        A -> A 'c' | A 'a' 'd' | 'b' 'd' | \u03B5
+        S -> A 'a' | 'b'
+        A -> A 'c' | S 'd' | 'ε'
         """
     )
     print(g)
-    print('terminals: ', g.terminals)
-    print('nonterminals: ', g.nonterminals)
-    print('productions: ', g.productions)
-    print('start_symbol: ', g.start_symbol)
     g2 = g.without_left_recursion()
+    print(g2)
+    g2.simplify()
+    print(g2)
