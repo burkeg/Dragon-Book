@@ -458,11 +458,11 @@ class ActionToken(Token):
 
 class EmptyToken(Token):
     def __init__(self):
-        super().__init__('')
+        super().__init__('ε')
 
     @classmethod
     def create(cls, lexeme):
-        if lexeme == '\u03B5':
+        if lexeme == 'ε':
             return EmptyToken()
         else:
             return None

@@ -1,5 +1,6 @@
 import copy
 import re
+import os
 
 import Tokens
 
@@ -20,6 +21,9 @@ class GrammarSymbol:
         return self.string
     __repr__ = __str__
 
+    def __lt__(self, other):
+        return self.string < other.string
+
 
 class Terminal(GrammarSymbol):
     def __init__(self, string=None, token=None):
@@ -31,10 +35,7 @@ class Terminal(GrammarSymbol):
             self.string = string
         elif string is not None:
             self.token = Tokens.Token.create(string)
-            if type(self.token) == Tokens.Token:
-                self.string = f"'{self.token.lexeme}'"
-            else:
-                self.string = string
+            self.string = f"'{self.token.lexeme}'"
         else:
             raise Exception('Not a valid terminal')
         super().__init__(self.string)
@@ -46,8 +47,8 @@ class ActionTerminal(Terminal):
 
 
 class Nonterminal(GrammarSymbol):
-    def derive_from(self):
-        return GrammarSymbol(self.string + "'")
+    def derive_from(self, suffix_gen):
+        return GrammarSymbol(f'{self.string}_{str(next(suffix_gen))}')
 
 
 class Grammar:
@@ -57,6 +58,7 @@ class Grammar:
         self.productions = productions      # A dictionary of nonterminals to lists of terminals/nonterminals
         self.start_symbol = start_symbol    # The starting point for all derivations from this grammar
         self.verify()
+        self._suffix_gen = self._suffix_gen_func()
 
     def __str__(self):
         return '------------------------\n'\
@@ -65,6 +67,12 @@ class Grammar:
                f'productions: {self.productions}\n'\
                f'start_symbol: {self.start_symbol}'
     __repr__ = __str__
+
+    def _suffix_gen_func(self):
+        cnt = 1
+        while True:
+            yield cnt
+            cnt += 1
 
     def simplify(self):
         for A, productions in self.productions.items():
@@ -190,7 +198,7 @@ class Grammar:
                         replaced_productions.append(production_i)
 
                 # eliminate the immediate left recursion among the A_i-productions
-                A_i_productions, A_ip_and_productions = self.remove_immediate_left_recursion(
+                A_i_productions, A_ip_and_productions = self.without_immediate_left_recursion(
                     A=A[i],
                     productions=replaced_productions)
 
@@ -202,9 +210,7 @@ class Grammar:
                     new_grammar.terminals.add(Terminal(string='ε'))
         return new_grammar
 
-
-    @staticmethod
-    def remove_immediate_left_recursion(A, productions):
+    def without_immediate_left_recursion(self, A, productions):
         assert isinstance(A, Nonterminal)
         # Immediate left recursion can be elminated by the following technique, which
         # works for any number of A-productions. First group the productions as
@@ -225,7 +231,7 @@ class Grammar:
         A_productions = []
         Ap_productions = []
 
-        Ap = A.derive_from()
+        Ap = A.derive_from(self._suffix_gen)
         for beta in not_including_A_i_prefix:
             A_productions.append(beta + [Ap])
 
@@ -236,16 +242,80 @@ class Grammar:
         Ap_productions.append([Terminal(string='ε')])
         return A_productions, (Ap, Ap_productions)
 
+    def left_factored(self):
+        new_grammar = copy.copy(self)
+        new_productions = dict()
+        for A, productions in new_grammar.productions.items():
+            # Find the longest prefix alpha common to two or more of its alternatives
+            production_tuples = [tuple(x) for x in productions]
+            sorted_production_tuples = sorted(production_tuples)
+            longest_prefix_length = -1
+            curr_range = range(2)
+            longest_prefix_range = None
+            while curr_range.stop <= len(sorted_production_tuples):
+                prefix = os.path.commonprefix([production_tuples[i] for i in curr_range])
+                if len(prefix) > longest_prefix_length:
+                    longest_prefix_length = len(prefix)
+                    longest_prefix_range = curr_range
+                    curr_range = range(curr_range.start, curr_range.stop + 1)
+                else:
+                    curr_range = range(curr_range.stop-1, curr_range.stop + 1)
+
+            if longest_prefix_length < 1:
+                new_productions[A] = productions
+                continue
+
+            # Replace all of the A-productions A -> alpha beta_1 | alpha beta_2 | ... | alpha beta_n | gamma
+            # where gamma represents all alternatives that do not begin with alpha, by
+            # A -> alpha A' | gamma
+            # A' -> beta_1 | beta_2 | ... | beta_n
+            Ap = A.derive_from(self._suffix_gen)
+            alpha = list(production_tuples[longest_prefix_range.start][:longest_prefix_length])
+
+            gamma = []
+            for i, production in enumerate(sorted_production_tuples):
+                if i not in longest_prefix_range:
+                    gamma.append(list(production))
+
+            betas = []
+            for i, production in enumerate(sorted_production_tuples):
+                if i in longest_prefix_range:
+                    new_production = list(production[longest_prefix_length:])
+                    if len(new_production) > 0:
+                        betas.append(new_production)
+                    else:
+                        betas.append([Terminal(string='ε')])
+                        new_grammar.terminals.add(Terminal(string='ε'))
+
+            if len(gamma) > 0:
+                new_productions[A] = [alpha + [Ap], gamma]
+            else:
+                new_productions[A] = [alpha + [Ap]]
+            new_productions[Ap] = betas
+            new_grammar.nonterminals.add(Ap)
+        new_grammar.productions = new_productions
+        return new_grammar
+
 
 if __name__ == '__main__':
-    g = Grammar.from_string(
+    # with_left_recursion = Grammar.from_string(
+    #     """
+    #     S -> A 'a' | 'b'
+    #     A -> A 'c' | S 'd' | 'ε'
+    #     """
+    # )
+    # print(with_left_recursion)
+    # without_left_recursion = g.without_left_recursion()
+    # print(without_left_recursion)
+    # without_left_recursion.simplify()
+    # print(without_left_recursion)
+
+    not_left_factored = Grammar.from_string(
         """
-        S -> A 'a' | 'b'
-        A -> A 'c' | S 'd' | 'ε'
+        stmt -> 'if' expr 'then' stmt 'else' stmt
+            |  'if' expr 'then' stmt
         """
     )
-    print(g)
-    g2 = g.without_left_recursion()
-    print(g2)
-    g2.simplify()
-    print(g2)
+    left_factored = not_left_factored.left_factored()
+    print(left_factored)
+

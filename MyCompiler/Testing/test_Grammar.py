@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import Grammar
 
+
 class TestGrammar(TestCase):
     def test_from_string(self):
         grammars = [
@@ -47,3 +48,37 @@ class TestGrammar(TestCase):
             with self.subTest(grammar=grammar):
                 g = Grammar.Grammar.from_string(grammar, action_dict)
                 print('productions: ', g.productions)
+
+    def test_left_factored(self):
+        grammars = [
+            """
+            stmt -> 'if' expr 'then' stmt 'else' stmt
+                |  'if' expr 'then' stmt
+            """,
+            """
+            S -> 'i' E 't' S | 'i' E 't' S 'e' S | 'a'
+            E -> 'b'
+            """,
+        ]
+
+        for grammar in grammars:
+            with self.subTest(grammar=grammar):
+                g = Grammar.Grammar.from_string(grammar)
+                print('Before:\n', g)
+                left_factored = g.left_factored()
+                print('After:\n', left_factored)
+
+    def test_without_left_recursion(self):
+        grammars = [
+            """
+            S -> A 'a' | 'b'
+            A -> A 'c' | S 'd' | 'ε'
+            """,
+        ]
+
+        for grammar in grammars:
+            with self.subTest(grammar=grammar):
+                g = Grammar.Grammar.from_string(grammar)
+                print('Before:\n', g)
+                without_left_recursion = g.without_left_recursion()
+                print('After:\n', without_left_recursion)
