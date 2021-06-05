@@ -92,3 +92,55 @@ class TestGrammar(TestCase):
                 # undecidable. I'm not going to make any assertion in this test
                 # and will rely on manual inspection that these match the outputs
                 # in the textbook.
+
+    def test_first(self):
+        grammars = [
+            # (
+            #     # """
+            #     # S -> 'c' A 'd'
+            #     # A -> 'a' 'b' | 'a'
+            #     # """
+            #     Grammar.TextbookGrammar('4.29'),
+            #     [
+            #         (
+            #             Grammar.Nonterminal('S'),
+            #             {'c'}
+            #         ),
+            #         (
+            #             Grammar.Nonterminal('A'),
+            #             {'a'}
+            #         ),
+            #     ]
+            # ),
+            (
+                # """
+                # S -> 'c' A 'd'
+                # A -> 'a' 'b' | 'a'
+                # """
+                Grammar.TextbookGrammar('4.20'),
+                [
+                    (
+                        Grammar.Nonterminal('S'),
+                        {'c'}
+                    ),
+                    (
+                        Grammar.Nonterminal('A'),
+                        {'a'}
+                    ),
+                ]
+            ),
+        ]
+
+        for grammar, test_cases in grammars:
+            with self.subTest(grammar=grammar):
+                if isinstance(grammar, Grammar.Grammar):
+                    g = grammar
+                else:
+                    g = Grammar.Grammar.from_string(grammar)
+                for find_start, expected_string in test_cases:
+                    with self.subTest(start_of=find_start):
+                        actual = g.first(find_start)
+                        expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
+                        assert actual == expected
+
+

@@ -19,6 +19,7 @@ class GrammarSymbol:
 
     def __str__(self):
         return self.string
+
     __repr__ = __str__
 
     def __lt__(self, other):
@@ -48,26 +49,27 @@ class ActionTerminal(Terminal):
 
 class Nonterminal(GrammarSymbol):
     def derive_from(self, suffix_gen):
-        return GrammarSymbol(f'{self.string}_{str(next(suffix_gen))}')
+        return Nonterminal(f'{self.string}_{str(next(suffix_gen))}')
 
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):
-        self.terminals = terminals          # A set of terminals
-        self.nonterminals = nonterminals    # A set of nonterminals
-        self.productions = productions      # A dictionary of nonterminals to lists of terminals/nonterminals
-        self.start_symbol = start_symbol    # The starting point for all derivations from this grammar
+        self.terminals = terminals  # A set of terminals
+        self.nonterminals = nonterminals  # A set of nonterminals
+        self.productions = productions  # A dictionary of nonterminals to lists of terminals/nonterminals
+        self.start_symbol = start_symbol  # The starting point for all derivations from this grammar
         self.verify()
         self._first_cache = dict()
         self._follow_cache = dict()
         self._suffix_gen = self._suffix_gen_func()
 
     def __str__(self):
-        return '------------------------\n'\
-               f'terminals: {self.terminals}\n'\
-               f'nonterminals: {self.nonterminals}\n'\
-               f'productions: {self.productions}\n'\
+        return '------------------------\n' \
+               f'terminals: {self.terminals}\n' \
+               f'nonterminals: {self.nonterminals}\n' \
+               f'productions: {self.productions}\n' \
                f'start_symbol: {self.start_symbol}'
+
     __repr__ = __str__
 
     def _suffix_gen_func(self):
@@ -94,7 +96,6 @@ class Grammar:
                 else:
                     new_productions.append(new_production)
             self.productions[A] = new_productions
-
 
     def verify(self):
         assert isinstance(self.terminals, set)
@@ -210,6 +211,7 @@ class Grammar:
                     new_grammar.productions[A_ip] = A_ip_productions
                     new_grammar.nonterminals.add(A_ip)
                     new_grammar.terminals.add(Terminal(string='ε'))
+        new_grammar.simplify()
         return new_grammar
 
     def without_immediate_left_recursion(self, A, productions):
@@ -220,8 +222,8 @@ class Grammar:
         # where no beta_i begins with an A. Then, replace the A-production by
         # A -> beta_1 A' | beta_2 A' | ... | beta_n A'
         # A' -> alpha_1 A' | alpha_2 A' | ... | alpha_m A' | ε
-        including_A_i_prefix = [] # productions including alpha
-        not_including_A_i_prefix = [] # productions including beta
+        including_A_i_prefix = []  # productions including alpha
+        not_including_A_i_prefix = []  # productions including beta
         for production in productions:
             if production[0] == A:
                 including_A_i_prefix.append(production)
@@ -262,9 +264,9 @@ class Grammar:
                     curr_range = range(curr_range.start, curr_range.stop + 1)
                 else:
                     if curr_range.start < curr_range.stop - 2:
-                        curr_range = range(curr_range.start+1, curr_range.stop)
+                        curr_range = range(curr_range.start + 1, curr_range.stop)
                     else:
-                        curr_range = range(curr_range.start+1, curr_range.stop+1)
+                        curr_range = range(curr_range.start + 1, curr_range.stop + 1)
 
             if longest_prefix_length < 1:
                 new_productions[A] = productions
@@ -297,28 +299,68 @@ class Grammar:
             new_productions[Ap] = betas
             new_grammar.nonterminals.add(Ap)
         new_grammar.productions = new_productions
+        new_grammar.simplify()
         return new_grammar
 
-    def first(self, symbol):
+    def _first_symbol(self, X):
         # If we already cached this then return right away
-        if symbol in self._first_cache:
-            return self._first_cache[symbol]
+        if X in self._first_cache:
+            return self._first_cache[X]
 
-        assert symbol in self.terminals or symbol in self.nonterminals
+        assert X in self.terminals or X in self.nonterminals
 
-        if isinstance(symbol, Terminal):
-            self._first_cache[symbol] = {symbol}
-            return self._first_cache[symbol]
+        if isinstance(X, Terminal):
+            self._first_cache[X] = {X}
+            return self._first_cache[X]
+
+        first_set = set()
+        epsilon = Terminal(string='ε')
+        for production in self.productions[X]:
+            if len(production) >= 1:
+                for Y_i in production:
+                    first_set.update(self._first_symbol(Y_i))
+                    if epsilon not in self._first_symbol(Y_i):
+                        break
+                else:
+                    if epsilon in production[-1]:
+                        first_set.add(epsilon)
+            else:
+                raise Exception('Tried processing an empty production. Was this supposed to be ε?')
+
+        return first_set
+
+    def first(self, string):
+        if isinstance(string, Terminal) or isinstance(string, Nonterminal):
+            return self._first_symbol(string)
+        for X in string:
+            assert isinstance(X, Terminal) or isinstance(X, Nonterminal)
+
+        first_set = set()
+        epsilon = Terminal(string='ε')
+
+        for i, X_i in string:
+            first_set.update(self._first_symbol(X_i).difference({epsilon}))
+            if epsilon not in self._first_symbol(X_i):
+                break
+        else:
+            if epsilon in string[-1]:
+                first_set.add(epsilon)
+
+        return first_set
+
 
 class TextbookGrammar(Grammar):
     _grammar_dict = dict()
+    _grammar_str_dict = dict()
+
     def __init__(self, name):
         if len(self._grammar_dict) == 0:
             self._init_grammar_dict()
         self.name = name
         if name not in self._grammar_dict:
             raise Exception('Unknown textbook grammar')
-        grammar_copy = copy.copy(self._grammar_dict[name])
+        self.string_version = self._grammar_dict[name]
+        grammar_copy = copy.copy(self.string_version)
         super().__init__(
             grammar_copy.terminals,
             grammar_copy.nonterminals,
@@ -326,42 +368,55 @@ class TextbookGrammar(Grammar):
             grammar_copy.start_symbol)
 
     @classmethod
-    def _init_grammar_dict(cls):
-        for value in cls._grammar_dict.values():
-            assert isinstance(value, Grammar)
-        cls._grammar_dict['4.18'] = Grammar.from_string(
+    def string_version(cls, name):
+        if len(cls._grammar_dict) == 0:
+            cls._init_grammar_dict()
+        if string_version := cls._grammar_str_dict.get(name):
+            return string_version
+        else:
+            raise Exception('String version not available.')
+
+    @classmethod
+    def _init_grammar_str_dict(cls):
+        cls._grammar_str_dict['4.18'] = \
             """
             S -> A 'a' | 'b'
             A -> A 'c' | S 'd' | 'ε'
-            """)
-        cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
-        cls._grammar_dict['4.3.4'] = Grammar.from_string(
+            """
+        cls._grammar_str_dict['4.3.4'] = \
             """
             stmt -> 'if' expr 'then' stmt 'else' stmt
                 |  'if' expr 'then' stmt
-            """)
-        cls._grammar_dict['4.23'] = Grammar.from_string(
+            """
+        cls._grammar_str_dict['4.23'] = \
             """
             S -> 'i' E 't' S | 'i' E 't' S 'e' S | 'a'
             E -> 'b'
-            """)
-        cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
-        cls._grammar_dict['4.28'] = Grammar.from_string(
+            """
+        cls._grammar_str_dict['4.28'] = \
             """
             E -> T Ep
             Ep -> '+' T Ep | 'ε'
             T -> F Tp
             Tp -> '*' F Tp | 'ε'
             F -> '(' E ')' | 'id'
-            """)
-        cls._grammar_dict['4.29'] = Grammar.from_string(
+            """
+        cls._grammar_str_dict['4.29'] = \
             """
             S -> 'c' A 'd'
             A -> 'a' 'b' | 'a'
-            """)
+            """
 
+    @classmethod
+    def _init_grammar_dict(cls):
+        cls._init_grammar_str_dict()
+        for name in cls._grammar_str_dict.keys():
+            cls._grammar_dict[name] = Grammar.from_string(cls._grammar_str_dict[name])
+
+        cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
+        cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
 
 
 if __name__ == '__main__':
-    print(TextbookGrammar('4.29').first(Terminal(string='c')))
-
+    print(TextbookGrammar('4.29')._first_symbol(Terminal(string='c')))
+    print(TextbookGrammar('4.20')._first_symbol(Terminal(string='c')))
