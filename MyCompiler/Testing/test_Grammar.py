@@ -145,6 +145,18 @@ class TestGrammar(TestCase):
                         Grammar.Nonterminal('A'),
                         {'a', 'b', 'c', 'ε'}
                     ),
+                    (
+                        [Grammar.Nonterminal('A'), Grammar.Terminal(string='d')],
+                        {'a', 'b', 'c', 'd'}
+                    ),
+                    (
+                        [Grammar.Nonterminal('A'), Grammar.Terminal(string='c')],
+                        {'a', 'b', 'c'}
+                    ),
+                    (
+                        [Grammar.Nonterminal('A'), Grammar.Nonterminal('S'), Grammar.Nonterminal('A')],
+                        {'a', 'b', 'c'}
+                    ),
                 ]
             ),
             (
