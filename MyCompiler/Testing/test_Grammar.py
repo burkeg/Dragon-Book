@@ -95,29 +95,12 @@ class TestGrammar(TestCase):
 
     def test_first(self):
         grammars = [
-            # (
-            #     # """
-            #     # S -> 'c' A 'd'
-            #     # A -> 'a' 'b' | 'a'
-            #     # """
-            #     Grammar.TextbookGrammar('4.29'),
-            #     [
-            #         (
-            #             Grammar.Nonterminal('S'),
-            #             {'c'}
-            #         ),
-            #         (
-            #             Grammar.Nonterminal('A'),
-            #             {'a'}
-            #         ),
-            #     ]
-            # ),
             (
                 # """
                 # S -> 'c' A 'd'
                 # A -> 'a' 'b' | 'a'
                 # """
-                Grammar.TextbookGrammar('4.20'),
+                Grammar.TextbookGrammar('4.29'),
                 [
                     (
                         Grammar.Nonterminal('S'),
@@ -129,16 +112,82 @@ class TestGrammar(TestCase):
                     ),
                 ]
             ),
+            (
+                # """
+                # S -> A 'a' | 'b'
+                # A -> A 'c' | S 'd' | 'ε'
+                # """
+                Grammar.TextbookGrammar('4.18'),
+                [
+                    (
+                        Grammar.Nonterminal('S'),
+                        {'a', 'b', 'c'}
+                    ),
+                    (
+                        Grammar.Nonterminal('A'),
+                        {'a', 'b', 'c', 'ε'}
+                    ),
+                ]
+            ),
+            (
+                # """
+                # S -> A 'a' | 'b'
+                # A -> A 'c' | S 'd' | 'ε'
+                # """
+                # But with the left recursion removal algorithm applied.
+                Grammar.TextbookGrammar('4.20'),
+                [
+                    (
+                        Grammar.Nonterminal('S'),
+                        {'a', 'b', 'c'}
+                    ),
+                    (
+                        Grammar.Nonterminal('A'),
+                        {'a', 'b', 'c', 'ε'}
+                    ),
+                ]
+            ),
+            (
+                # """
+                # E -> T Ep
+                # Ep -> '+' T Ep | 'ε'
+                # T -> F Tp
+                # Tp -> '*' F Tp | 'ε'
+                # F -> '(' E ')' | 'id'
+                # """
+                Grammar.TextbookGrammar('4.28'),
+                [
+                    (
+                        Grammar.Nonterminal('E'),
+                        {'(', 'id'}
+                    ),
+                    (
+                        Grammar.Nonterminal('Ep'),
+                        {'+', 'ε'}
+                    ),
+                    (
+                        Grammar.Nonterminal('T'),
+                        {'(', 'id'}
+                    ),
+                    (
+                        Grammar.Nonterminal('Tp'),
+                        {'*', 'ε'}
+                    ),
+                    (
+                        Grammar.Nonterminal('F'),
+                        {'(', 'id'}
+                    ),
+                ]
+            ),
         ]
 
         for grammar, test_cases in grammars:
-            with self.subTest(grammar=grammar):
                 if isinstance(grammar, Grammar.Grammar):
                     g = grammar
                 else:
                     g = Grammar.Grammar.from_string(grammar)
                 for find_start, expected_string in test_cases:
-                    with self.subTest(start_of=find_start):
+                    with self.subTest(start_of=find_start, expected=expected_string):
                         actual = g.first(find_start)
                         expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
                         assert actual == expected
