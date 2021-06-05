@@ -348,6 +348,45 @@ class Grammar:
 
         return first_set
 
+    def _first_symbol_2(self, X, first_dict):
+        epsilon = Terminal(string='ε')
+        if X in first_dict:
+            return first_dict[X]
+
+        # If X is a terminal then FIRST(X) = {X}
+        if isinstance(X, Terminal):
+            first_dict[X] = {X}
+            return first_dict[X]
+
+
+    def first_2(self, string):
+        # if isinstance(string, Terminal) or isinstance(string, Nonterminal):
+        #     return self._first_symbol_2(string)
+        first_dict = dict()
+        epsilon = Terminal(string='ε')
+
+        for terminal in self.terminals:
+            self._first_symbol_2(terminal, first_dict)
+
+        for nonterminal in self.nonterminals:
+            for productions in self.productions[nonterminal]:
+                if len(productions) == 1 and productions[0] == epsilon:
+                    first_dict[nonterminal] = {epsilon}
+                    break
+            else:
+                first_dict[nonterminal] = set()
+
+        new_null = True
+        while new_null:
+            new_null = False
+            for nonterminal in self.nonterminals:
+                for productions in self.productions[nonterminal]:
+                    if all([epsilon in first_dict[prod] for prod in productions]):
+                        if len(first_dict[nonterminal]) == 0:
+                            first_dict[nonterminal] = {epsilon}
+                            new_null = True
+
+
 
 class TextbookGrammar(Grammar):
     _grammar_dict = dict()

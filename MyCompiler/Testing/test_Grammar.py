@@ -139,7 +139,7 @@ class TestGrammar(TestCase):
                     g = Grammar.Grammar.from_string(grammar)
                 for find_start, expected_string in test_cases:
                     with self.subTest(start_of=find_start):
-                        actual = g.first(find_start)
+                        actual = g.first_2(find_start)
                         expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
                         assert actual == expected
 
