@@ -59,7 +59,7 @@ class Grammar:
         self.productions = productions  # A dictionary of nonterminals to lists of terminals/nonterminals
         self.start_symbol = start_symbol  # The starting point for all derivations from this grammar
         self.verify()
-        self._first_cache = dict()
+        self._first_cache = None
         self._follow_cache = dict()
         self._suffix_gen = self._suffix_gen_func()
 
@@ -185,7 +185,8 @@ class Grammar:
 
     def without_left_recursion(self):
         new_grammar = copy.copy(self)
-        A = list(new_grammar.nonterminals)
+        # A = list(reversed(sorted(list(new_grammar.nonterminals))))
+        A = sorted(list(new_grammar.nonterminals))
         for i in range(len(A)):
             for j in range(i):
                 # Replace each production of the form A_i -> A_j y by the
@@ -199,18 +200,19 @@ class Grammar:
                             replaced_productions.append(s + y)
                     else:
                         replaced_productions.append(production_i)
+                new_grammar.productions[A[i]] = replaced_productions
 
-                # eliminate the immediate left recursion among the A_i-productions
-                A_i_productions, A_ip_and_productions = self.without_immediate_left_recursion(
-                    A=A[i],
-                    productions=replaced_productions)
+            # eliminate the immediate left recursion among the A_i-productions
+            A_i_productions, A_ip_and_productions = self.without_immediate_left_recursion(
+                A=A[i],
+                productions=new_grammar.productions[A[i]])
 
-                new_grammar.productions[A[i]] = A_i_productions
-                if A_ip_and_productions:
-                    A_ip, A_ip_productions = A_ip_and_productions
-                    new_grammar.productions[A_ip] = A_ip_productions
-                    new_grammar.nonterminals.add(A_ip)
-                    new_grammar.terminals.add(Terminal(string='ε'))
+            new_grammar.productions[A[i]] = A_i_productions
+            if A_ip_and_productions:
+                A_ip, A_ip_productions = A_ip_and_productions
+                new_grammar.productions[A_ip] = A_ip_productions
+                new_grammar.nonterminals.add(A_ip)
+                new_grammar.terminals.add(Terminal(string='ε'))
         new_grammar.simplify()
         return new_grammar
 
@@ -302,90 +304,64 @@ class Grammar:
         new_grammar.simplify()
         return new_grammar
 
-    def _first_symbol(self, X):
-        # If we already cached this then return right away
-        if X in self._first_cache:
-            return self._first_cache[X]
+    def first(self, symbol_string):
+        if self._first_cache == None:
+            self.compute_all_first()
 
-        assert X in self.terminals or X in self.nonterminals
+        if isinstance(symbol_string, Terminal) or isinstance(symbol_string, Nonterminal):
+            symbol_string = [symbol_string]
 
-        if isinstance(X, Terminal):
-            self._first_cache[X] = {X}
-            return self._first_cache[X]
-
-        first_set = set()
-        epsilon = Terminal(string='ε')
-        for production in self.productions[X]:
-            if len(production) >= 1:
-                for Y_i in production:
-                    first_set.update(self._first_symbol(Y_i))
-                    if epsilon not in self._first_symbol(Y_i):
-                        break
-                else:
-                    if epsilon in production[-1]:
-                        first_set.add(epsilon)
-            else:
-                raise Exception('Tried processing an empty production. Was this supposed to be ε?')
-
-        return first_set
-
-    def first(self, string):
-        if isinstance(string, Terminal) or isinstance(string, Nonterminal):
-            return self._first_symbol(string)
-        for X in string:
-            assert isinstance(X, Terminal) or isinstance(X, Nonterminal)
-
-        first_set = set()
         epsilon = Terminal(string='ε')
 
-        for i, X_i in string:
-            first_set.update(self._first_symbol(X_i).difference({epsilon}))
-            if epsilon not in self._first_symbol(X_i):
+        first = set()
+
+        for X_i in symbol_string:
+            first.update(self._first_cache[X_i].difference({epsilon}))
+            if epsilon not in self._first_cache[X_i]:
+                # ε not in X_i so X_i+1 can't contribute to FIRST(symbol_string)
                 break
         else:
-            if epsilon in string[-1]:
-                first_set.add(epsilon)
+            # We made it here which means ε was in all X_i
+            first.add(epsilon)
 
-        return first_set
+        return first
 
-    def _first_symbol_2(self, X, first_dict):
-        epsilon = Terminal(string='ε')
-        if X in first_dict:
-            return first_dict[X]
-
-        # If X is a terminal then FIRST(X) = {X}
-        if isinstance(X, Terminal):
-            first_dict[X] = {X}
-            return first_dict[X]
-
-
-    def first_2(self, string):
-        # if isinstance(string, Terminal) or isinstance(string, Nonterminal):
-        #     return self._first_symbol_2(string)
-        first_dict = dict()
+    def compute_all_first(self):
+        self._first_cache = dict()
         epsilon = Terminal(string='ε')
 
+        # If X is a terminal, then FIRST(X) = {X}.
         for terminal in self.terminals:
-            self._first_symbol_2(terminal, first_dict)
+            self._first_cache[terminal] = {terminal}
 
+        # If X -> ε is a production, then add ε to FIRST(X).
         for nonterminal in self.nonterminals:
             for productions in self.productions[nonterminal]:
                 if len(productions) == 1 and productions[0] == epsilon:
-                    first_dict[nonterminal] = {epsilon}
+                    self._first_cache[nonterminal] = {epsilon}
                     break
             else:
-                first_dict[nonterminal] = set()
+                self._first_cache[nonterminal] = set()
 
-        new_null = True
-        while new_null:
-            new_null = False
-            for nonterminal in self.nonterminals:
-                for productions in self.productions[nonterminal]:
-                    if all([epsilon in first_dict[prod] for prod in productions]):
-                        if len(first_dict[nonterminal]) == 0:
-                            first_dict[nonterminal] = {epsilon}
-                            new_null = True
+        changed = True
+        while changed:
+            changed = False
+            for X in self.nonterminals:
+                for productions in self.productions[X]:
+                    for Y_i in productions:
+                        before = len(self._first_cache[X])
+                        self._first_cache[X].update(self._first_cache[Y_i].difference({epsilon}))
+                        if len(self._first_cache[X]) != before:
+                            changed = True
 
+                        if epsilon not in self._first_cache[Y_i]:
+                            # ε not in Y_i so Y_i+1 can't contribute to FIRST(X)
+                            break
+                    else:
+                        # We made it here which means ε was in all Y_i
+                        if epsilon not in self._first_cache[X]:
+                            self._first_cache[X].add(epsilon)
+                            change = True
 
 
 class TextbookGrammar(Grammar):
@@ -455,7 +431,11 @@ class TextbookGrammar(Grammar):
         cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
         cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
 
+def do_stuff():
+    g = TextbookGrammar('4.20')
+    print(g)
+    print(g.first(Nonterminal('A')))
+    print(g.first(Nonterminal('S')))
 
 if __name__ == '__main__':
-    print(TextbookGrammar('4.29')._first_symbol(Terminal(string='c')))
-    print(TextbookGrammar('4.20')._first_symbol(Terminal(string='c')))
+    do_stuff()
