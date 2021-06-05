@@ -68,6 +68,11 @@ class TestGrammar(TestCase):
                 left_factored = g.left_factored()
                 print('After:\n', left_factored)
 
+                # The problem of determining if two grammars produce the same language is
+                # undecidable. I'm not going to make any assertion in this test
+                # and will rely on manual inspection that these match the outputs
+                # in the textbook.
+
     def test_without_left_recursion(self):
         grammars = [
             """
@@ -82,3 +87,8 @@ class TestGrammar(TestCase):
                 print('Before:\n', g)
                 without_left_recursion = g.without_left_recursion()
                 print('After:\n', without_left_recursion)
+
+                # The problem of determining if two grammars produce the same language is
+                # undecidable. I'm not going to make any assertion in this test
+                # and will rely on manual inspection that these match the outputs
+                # in the textbook.

@@ -468,6 +468,18 @@ class EmptyToken(Token):
             return None
 
 
+class EndToken(Token):
+    def __init__(self):
+        super().__init__('$')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '$':
+            return EndToken()
+        else:
+            return None
+
+
 def do_something():
     print(Token.create('+='))
 

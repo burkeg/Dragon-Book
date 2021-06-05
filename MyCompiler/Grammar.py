@@ -58,6 +58,8 @@ class Grammar:
         self.productions = productions      # A dictionary of nonterminals to lists of terminals/nonterminals
         self.start_symbol = start_symbol    # The starting point for all derivations from this grammar
         self.verify()
+        self._first_cache = dict()
+        self._follow_cache = dict()
         self._suffix_gen = self._suffix_gen_func()
 
     def __str__(self):
@@ -253,13 +255,16 @@ class Grammar:
             curr_range = range(2)
             longest_prefix_range = None
             while curr_range.stop <= len(sorted_production_tuples):
-                prefix = os.path.commonprefix([production_tuples[i] for i in curr_range])
+                prefix = os.path.commonprefix([sorted_production_tuples[i] for i in curr_range])
                 if len(prefix) > longest_prefix_length:
                     longest_prefix_length = len(prefix)
                     longest_prefix_range = curr_range
                     curr_range = range(curr_range.start, curr_range.stop + 1)
                 else:
-                    curr_range = range(curr_range.stop-1, curr_range.stop + 1)
+                    if curr_range.start < curr_range.stop - 2:
+                        curr_range = range(curr_range.start+1, curr_range.stop)
+                    else:
+                        curr_range = range(curr_range.start+1, curr_range.stop+1)
 
             if longest_prefix_length < 1:
                 new_productions[A] = productions
@@ -287,35 +292,76 @@ class Grammar:
                         betas.append([Terminal(string='ε')])
                         new_grammar.terminals.add(Terminal(string='ε'))
 
-            if len(gamma) > 0:
-                new_productions[A] = [alpha + [Ap], gamma]
-            else:
-                new_productions[A] = [alpha + [Ap]]
+            new_productions[A] = [alpha + [Ap]]
+            new_productions[A].extend(gamma)
             new_productions[Ap] = betas
             new_grammar.nonterminals.add(Ap)
         new_grammar.productions = new_productions
         return new_grammar
 
+    def first(self, symbol):
+        # If we already cached this then return right away
+        if symbol in self._first_cache:
+            return self._first_cache[symbol]
+
+        assert symbol in self.terminals or symbol in self.nonterminals
+
+        if isinstance(symbol, Terminal):
+            self._first_cache[symbol] = {symbol}
+            return self._first_cache[symbol]
+
+class TextbookGrammar(Grammar):
+    _grammar_dict = dict()
+    def __init__(self, name):
+        if len(self._grammar_dict) == 0:
+            self._init_grammar_dict()
+        self.name = name
+        if name not in self._grammar_dict:
+            raise Exception('Unknown textbook grammar')
+        grammar_copy = copy.copy(self._grammar_dict[name])
+        super().__init__(
+            grammar_copy.terminals,
+            grammar_copy.nonterminals,
+            grammar_copy.productions,
+            grammar_copy.start_symbol)
+
+    @classmethod
+    def _init_grammar_dict(cls):
+        for value in cls._grammar_dict.values():
+            assert isinstance(value, Grammar)
+        cls._grammar_dict['4.18'] = Grammar.from_string(
+            """
+            S -> A 'a' | 'b'
+            A -> A 'c' | S 'd' | 'ε'
+            """)
+        cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
+        cls._grammar_dict['4.3.4'] = Grammar.from_string(
+            """
+            stmt -> 'if' expr 'then' stmt 'else' stmt
+                |  'if' expr 'then' stmt
+            """)
+        cls._grammar_dict['4.23'] = Grammar.from_string(
+            """
+            S -> 'i' E 't' S | 'i' E 't' S 'e' S | 'a'
+            E -> 'b'
+            """)
+        cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
+        cls._grammar_dict['4.28'] = Grammar.from_string(
+            """
+            E -> T Ep
+            Ep -> '+' T Ep | 'ε'
+            T -> F Tp
+            Tp -> '*' F Tp | 'ε'
+            F -> '(' E ')' | 'id'
+            """)
+        cls._grammar_dict['4.29'] = Grammar.from_string(
+            """
+            S -> 'c' A 'd'
+            A -> 'a' 'b' | 'a'
+            """)
+
+
 
 if __name__ == '__main__':
-    # with_left_recursion = Grammar.from_string(
-    #     """
-    #     S -> A 'a' | 'b'
-    #     A -> A 'c' | S 'd' | 'ε'
-    #     """
-    # )
-    # print(with_left_recursion)
-    # without_left_recursion = g.without_left_recursion()
-    # print(without_left_recursion)
-    # without_left_recursion.simplify()
-    # print(without_left_recursion)
-
-    not_left_factored = Grammar.from_string(
-        """
-        stmt -> 'if' expr 'then' stmt 'else' stmt
-            |  'if' expr 'then' stmt
-        """
-    )
-    left_factored = not_left_factored.left_factored()
-    print(left_factored)
+    print(TextbookGrammar('4.29').first(Terminal(string='c')))
 
