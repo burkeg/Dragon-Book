@@ -204,4 +204,86 @@ class TestGrammar(TestCase):
                         expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
                         assert actual == expected
 
+    def test_follow(self):
+        grammars = [
+            (
+                # """
+                # S -> 'c' A 'd'
+                # A -> 'a' 'b' | 'a'
+                # """
+                Grammar.TextbookGrammar('4.29'),
+                [
+                    (
+                        Grammar.Nonterminal('S'),
+                        {'$'}
+                    ),
+                    (
+                        Grammar.Nonterminal('A'),
+                        {'d'}
+                    ),
+                ]
+            ),
+            (
+                # """
+                # S -> A 'a' | 'b'
+                # A -> A 'c' | S 'd' | 'ε'
+                # """
+                Grammar.TextbookGrammar('4.18'),
+                [
+                    (
+                        Grammar.Nonterminal('S'),
+                        {'$', 'd'}
+                    ),
+                    (
+                        Grammar.Nonterminal('A'),
+                        {'a', 'c'}
+                    ),
+                ]
+            ),
+            (
+                # """
+                # E -> T Ep
+                # Ep -> '+' T Ep | 'ε'
+                # T -> F Tp
+                # Tp -> '*' F Tp | 'ε'
+                # F -> '(' E ')' | 'id'
+                # """
+                Grammar.TextbookGrammar('4.28'),
+                [
+                    (
+                        Grammar.Nonterminal('E'),
+                        {'$', ')'}
+                    ),
+                    (
+                        Grammar.Nonterminal('Ep'),
+                        {'$', ')'}
+                    ),
+                    (
+                        Grammar.Nonterminal('T'),
+                        {'+', '$', ')'}
+                    ),
+                    (
+                        Grammar.Nonterminal('Tp'),
+                        {'+', '$', ')'}
+                    ),
+                    (
+                        Grammar.Nonterminal('F'),
+                        {'*', '+', '$', ')'}
+                    ),
+                ]
+            ),
+        ]
+
+        for grammar, test_cases in grammars:
+                if isinstance(grammar, Grammar.Grammar):
+                    g = grammar
+                else:
+                    g = Grammar.Grammar.from_string(grammar)
+                for find_follow, expected_string in test_cases:
+                    with self.subTest(follow_of=find_follow, expected=expected_string):
+                        actual = g.follow(find_follow)
+                        expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
+                        if not(actual == expected):
+                            assert False
+
 

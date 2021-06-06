@@ -60,7 +60,7 @@ class Grammar:
         self.start_symbol = start_symbol  # The starting point for all derivations from this grammar
         self.verify()
         self._first_cache = None
-        self._follow_cache = dict()
+        self._follow_cache = None
         self._suffix_gen = self._suffix_gen_func()
 
     def __str__(self):
@@ -72,7 +72,8 @@ class Grammar:
 
     __repr__ = __str__
 
-    def _suffix_gen_func(self):
+    @staticmethod
+    def _suffix_gen_func():
         cnt = 1
         while True:
             yield cnt
@@ -96,6 +97,31 @@ class Grammar:
                 else:
                     new_productions.append(new_production)
             self.productions[A] = new_productions
+
+        found_terminals = set()
+        for terminal in self.terminals:
+            for A, productions in self.productions.items():
+                for production in productions:
+                    for symbol in production:
+                        if isinstance(symbol, Terminal):
+                            found_terminals.add(symbol)
+
+        found_nonterminals = {self.start_symbol}
+        for nonterminal in self.nonterminals:
+            for A, productions in self.productions.items():
+                if A == nonterminal:
+                    continue
+                for production in productions:
+                    for symbol in production:
+                        if isinstance(symbol, Nonterminal):
+                            found_nonterminals.add(symbol)
+
+        self.terminals = found_terminals
+        for nonterminal in self.nonterminals.difference(found_nonterminals):
+            del self.productions[nonterminal]
+        self.nonterminals = found_nonterminals
+
+
 
     def verify(self):
         assert isinstance(self.terminals, set)
@@ -186,7 +212,7 @@ class Grammar:
     def without_left_recursion(self):
         new_grammar = copy.copy(self)
         # A = list(reversed(sorted(list(new_grammar.nonterminals))))
-        A = sorted(list(new_grammar.nonterminals))
+        A = sorted(new_grammar.nonterminals)
         for i in range(len(A)):
             for j in range(i):
                 # Replace each production of the form A_i -> A_j y by the
@@ -220,12 +246,12 @@ class Grammar:
         assert isinstance(A, Nonterminal)
         # Immediate left recursion can be elminated by the following technique, which
         # works for any number of A-productions. First group the productions as
-        # A -> A alpha_1 | A alpha_2 | ... A alpha_m | beta_1 | beta_2 | ... | beta_n
-        # where no beta_i begins with an A. Then, replace the A-production by
-        # A -> beta_1 A' | beta_2 A' | ... | beta_n A'
-        # A' -> alpha_1 A' | alpha_2 A' | ... | alpha_m A' | ε
-        including_A_i_prefix = []  # productions including alpha
-        not_including_A_i_prefix = []  # productions including beta
+        # A -> A α_1 | A α_2 | ... A α_m | β_1 | β_2 | ... | β_n
+        # where no β_i begins with an A. Then, replace the A-production by
+        # A -> β_1 A' | β_2 A' | ... | β_n A'
+        # A' -> α_1 A' | α_2 A' | ... | α_m A' | ε
+        including_A_i_prefix = []  # productions including α
+        not_including_A_i_prefix = []  # productions including β
         for production in productions:
             if production[0] == A:
                 including_A_i_prefix.append(production)
@@ -252,7 +278,7 @@ class Grammar:
         new_grammar = copy.copy(self)
         new_productions = dict()
         for A, productions in new_grammar.productions.items():
-            # Find the longest prefix alpha common to two or more of its alternatives
+            # Find the longest prefix α common to two or more of its alternatives
             production_tuples = [tuple(x) for x in productions]
             sorted_production_tuples = sorted(production_tuples)
             longest_prefix_length = -1
@@ -274,10 +300,10 @@ class Grammar:
                 new_productions[A] = productions
                 continue
 
-            # Replace all of the A-productions A -> alpha beta_1 | alpha beta_2 | ... | alpha beta_n | gamma
-            # where gamma represents all alternatives that do not begin with alpha, by
-            # A -> alpha A' | gamma
-            # A' -> beta_1 | beta_2 | ... | beta_n
+            # Replace all of the A-productions A -> α β_1 | α β_2 | ... | α β_n | gamma
+            # where gamma represents all alternatives that do not begin with α, by
+            # A -> α A' | gamma
+            # A' -> β_1 | β_2 | ... | β_n
             Ap = A.derive_from(self._suffix_gen)
             alpha = list(production_tuples[longest_prefix_range.start][:longest_prefix_length])
 
@@ -308,6 +334,9 @@ class Grammar:
         if self._first_cache == None:
             self.compute_all_first()
 
+        if tuple(symbol_string) in self._first_cache:
+            return self._first_cache[tuple(symbol_string)]
+
         if isinstance(symbol_string, Terminal) or isinstance(symbol_string, Nonterminal):
             symbol_string = [symbol_string]
 
@@ -324,6 +353,7 @@ class Grammar:
             # We made it here which means ε was in all X_i
             first.add(epsilon)
 
+        self._first_cache[tuple(symbol_string)] = first
         return first
 
     def compute_all_first(self):
@@ -362,6 +392,56 @@ class Grammar:
                         if epsilon not in self._first_cache[X]:
                             self._first_cache[X].add(epsilon)
                             change = True
+
+    def follow(self, X):
+        assert isinstance(X, Nonterminal)
+        if self._follow_cache == None:
+            self.compute_all_follow()
+
+        return self._follow_cache[X]
+
+    def compute_all_follow(self):
+        self._follow_cache = dict()
+        epsilon = Terminal(string='ε')
+        for A in self.nonterminals:
+            self._follow_cache[A] = set()
+        self._follow_cache[self.start_symbol].add(Terminal(string='$'))
+
+
+        changed = True
+        while changed:
+            changed = False
+            for A in self.nonterminals:
+                # If there is a production A -> α B β, then everything in FIRST(β) except ε
+                # is in FOLLOW(B)
+                for production in self.productions[A]:
+                    for i in range(len(production)):
+                        B = production[i]
+                        if isinstance(B, Terminal):
+                            continue
+                        # alpha = production[:i] # not actually used
+                        beta = production[(i+1):]
+                        before = len(self._follow_cache[B])
+                        self._follow_cache[B].update(self.first(beta).difference({epsilon}))
+                        if len(self._follow_cache[B]) != before:
+                            changed = True
+
+                # If there is a production A -> α B, or a production A -> α B β, where
+                # FIRST(β) contains ε, then everything in FOLLOW(A) is in FOLLOW(B)
+                for production in self.productions[A]:
+                    for i in range(len(production)):
+                        B = production[i]
+                        if isinstance(B, Terminal):
+                            continue
+                        # alpha = production[:i] # not actually used
+                        beta = production[(i+1):]
+                        if epsilon in self.first(beta):
+                            before = len(self._follow_cache[B])
+                            self._follow_cache[B].update(self._follow_cache[A])
+                            if len(self._follow_cache[B]) != before:
+                                changed = True
+
+
 
 
 class TextbookGrammar(Grammar):
@@ -431,11 +511,15 @@ class TextbookGrammar(Grammar):
         cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
         cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
 
+
 def do_stuff():
-    g = TextbookGrammar('4.20')
+    g = TextbookGrammar('4.29')
     print(g)
-    print(g.first(Nonterminal('A')))
-    print(g.first(Nonterminal('S')))
+    print(g.first([]))
+    # print(g.first(Nonterminal('A')))
+    # print(g.first(Nonterminal('S')))
+    print(g.follow(Nonterminal('A')))
+
 
 if __name__ == '__main__':
     do_stuff()
