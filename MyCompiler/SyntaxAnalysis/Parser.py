@@ -5,6 +5,20 @@ import Grammar
 import Tokens
 
 
+class ParseTree:
+    def __init__(self, symbol, production):
+        self.symbol = symbol
+        self.production = production
+        self.children = None
+        if isinstance(production, tuple):
+            for symbol in production:
+                assert isinstance(symbol, Grammar.GrammarSymbol)
+                self.children = [None for _ in self.production]
+        else:
+            assert isinstance(production, Grammar.Terminal)
+            self.children = [production]
+
+
 class Parser:
     pass
 
@@ -106,15 +120,29 @@ class LL1Parser(Parser):
                 stack.extend(reversed([_ for _ in production if _ != Grammar.Terminal.epsilon]))
             X = stack[-1]
 
+    def to_parse_tree(self, derivation_iterator):
+        A, production = next(derivation_iterator)
+        curr_node = ParseTree(A, production)
+        for i, child in enumerate(production):
+            if isinstance(child, Grammar.Terminal):
+                curr_node.children[i] = ParseTree(child, child)
+            else:
+                curr_node.children[i] = self.to_parse_tree(derivation_iterator)
+
+        return curr_node
+
+
+
 
 
 def do_stuff():
     g = Grammar.TextbookGrammar('4.28')
     print(g)
     ll1 = LL1Parser(g)
-    print(ll1)
-    for retval in ll1.produce_derivation(['id', '+', 'id', '*', 'id', ]):
-        print(retval)
+
+    productions = ll1.produce_derivation(['id', '+', 'id', '*', 'id'])
+    tree = ll1.to_parse_tree(productions)
+    print(tree)
 
 
 if __name__ == '__main__':
