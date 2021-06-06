@@ -6,17 +6,19 @@ import Tokens
 
 
 class ParseTree:
-    def __init__(self, symbol, production):
+    def __init__(self, symbol):
         self.symbol = symbol
-        self.production = production
-        self.children = None
-        if isinstance(production, tuple):
-            for symbol in production:
-                assert isinstance(symbol, Grammar.GrammarSymbol)
-                self.children = [None for _ in self.production]
-        else:
-            assert isinstance(production, Grammar.Terminal)
-            self.children = [production]
+        self.children = []
+
+    # https://stackoverflow.com/questions/20242479/printing-a-tree-data-structure-in-python
+    def __str__(self, level=0):
+        ret = "|   "*level+repr(self.symbol)+"\n"
+        for child in self.children:
+            ret += child.__str__(level+1)
+        return ret
+
+    def __repr__(self):
+        return repr(self.symbol)
 
 
 class Parser:
@@ -122,12 +124,14 @@ class LL1Parser(Parser):
 
     def to_parse_tree(self, derivation_iterator):
         A, production = next(derivation_iterator)
-        curr_node = ParseTree(A, production)
+        curr_node = ParseTree(A)
         for i, child in enumerate(production):
+            child_to_add = None
             if isinstance(child, Grammar.Terminal):
-                curr_node.children[i] = ParseTree(child, child)
+                child_to_add = ParseTree(child)
             else:
-                curr_node.children[i] = self.to_parse_tree(derivation_iterator)
+                child_to_add = self.to_parse_tree(derivation_iterator)
+            curr_node.children.append(child_to_add)
 
         return curr_node
 
