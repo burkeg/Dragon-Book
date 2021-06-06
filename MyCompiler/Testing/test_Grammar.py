@@ -134,27 +134,14 @@ class TestGrammar(TestCase):
                 # S -> A 'a' | 'b'
                 # A -> A 'c' | S 'd' | 'ε'
                 # """
-                # But with the left recursion removal algorithm applied.
+                # Actually 4.18. After removing left recursion the meanings of symbols can
+                # change and new symbols can be introduced. Modifying the behavior of
+                # simplify() or without_left_recursion() can break these tests despite still
+                # having correct outputs.
                 Grammar.TextbookGrammar('4.20'),
                 [
                     (
                         Grammar.Nonterminal('S'),
-                        {'a', 'b', 'c'}
-                    ),
-                    (
-                        Grammar.Nonterminal('A'),
-                        {'a', 'b', 'c', 'ε'}
-                    ),
-                    (
-                        [Grammar.Nonterminal('A'), Grammar.Terminal(string='d')],
-                        {'a', 'b', 'c', 'd'}
-                    ),
-                    (
-                        [Grammar.Nonterminal('A'), Grammar.Terminal(string='c')],
-                        {'a', 'b', 'c'}
-                    ),
-                    (
-                        [Grammar.Nonterminal('A'), Grammar.Nonterminal('S'), Grammar.Nonterminal('A')],
                         {'a', 'b', 'c'}
                     ),
                 ]
@@ -237,6 +224,31 @@ class TestGrammar(TestCase):
                     (
                         Grammar.Nonterminal('A'),
                         {'a', 'c'}
+                    ),
+                ]
+            ),
+            (
+                # """
+                # S -> A 'a' | 'b'
+                # A -> A 'c' | S 'd' | 'ε'
+                # """
+                # Actually 4.18. After removing left recursion the meanings of symbols can
+                # change and new symbols can be introduced. Modifying the behavior of
+                # simplify() or without_left_recursion() can break these tests despite still
+                # having correct outputs.
+                Grammar.TextbookGrammar('4.20'),
+                [
+                    (
+                        Grammar.Nonterminal('S'),
+                        {'$'}
+                    ),
+                    (
+                        Grammar.Nonterminal('A_1'),
+                        {'a'}
+                    ),
+                    (
+                        Grammar.Nonterminal('S_2'),
+                        {'$'}
                     ),
                 ]
             ),

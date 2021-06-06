@@ -24,9 +24,9 @@ class Token:
     @classmethod
     def create(cls, lexeme):
         if lexeme == 'id':
-            return IDToken('')
+            return IDToken('id')
         elif lexeme == 'num':
-            return NumToken('')
+            return NumToken('num')
         for subclass in cls.__subclasses__():
             if subclass == IDToken or \
                     subclass == NumToken or \

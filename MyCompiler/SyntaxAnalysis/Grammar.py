@@ -27,6 +27,8 @@ class GrammarSymbol:
 
 
 class Terminal(GrammarSymbol):
+    epsilon = None
+    end = None
     def __init__(self, string=None, token=None):
         self.token = None
         assert string is not None or token is not None
@@ -40,6 +42,10 @@ class Terminal(GrammarSymbol):
         else:
             raise Exception('Not a valid terminal')
         super().__init__(self.string)
+
+
+Terminal.epsilon = Terminal(string='ε')
+Terminal.end = Terminal(string='$')
 
 
 class ActionTerminal(Terminal):
@@ -334,31 +340,28 @@ class Grammar:
         if self._first_cache == None:
             self.compute_all_first()
 
+        if isinstance(symbol_string, Terminal) or isinstance(symbol_string, Nonterminal):
+            return self._first_cache[symbol_string]
+
         if tuple(symbol_string) in self._first_cache:
             return self._first_cache[tuple(symbol_string)]
-
-        if isinstance(symbol_string, Terminal) or isinstance(symbol_string, Nonterminal):
-            symbol_string = [symbol_string]
-
-        epsilon = Terminal(string='ε')
 
         first = set()
 
         for X_i in symbol_string:
-            first.update(self._first_cache[X_i].difference({epsilon}))
-            if epsilon not in self._first_cache[X_i]:
+            first.update(self._first_cache[X_i].difference({Terminal.epsilon}))
+            if Terminal.epsilon not in self._first_cache[X_i]:
                 # ε not in X_i so X_i+1 can't contribute to FIRST(symbol_string)
                 break
         else:
             # We made it here which means ε was in all X_i
-            first.add(epsilon)
+            first.add(Terminal.epsilon)
 
         self._first_cache[tuple(symbol_string)] = first
         return first
 
     def compute_all_first(self):
         self._first_cache = dict()
-        epsilon = Terminal(string='ε')
 
         # If X is a terminal, then FIRST(X) = {X}.
         for terminal in self.terminals:
@@ -367,8 +370,8 @@ class Grammar:
         # If X -> ε is a production, then add ε to FIRST(X).
         for nonterminal in self.nonterminals:
             for productions in self.productions[nonterminal]:
-                if len(productions) == 1 and productions[0] == epsilon:
-                    self._first_cache[nonterminal] = {epsilon}
+                if len(productions) == 1 and productions[0] == Terminal.epsilon:
+                    self._first_cache[nonterminal] = {Terminal.epsilon}
                     break
             else:
                 self._first_cache[nonterminal] = set()
@@ -380,17 +383,17 @@ class Grammar:
                 for productions in self.productions[X]:
                     for Y_i in productions:
                         before = len(self._first_cache[X])
-                        self._first_cache[X].update(self._first_cache[Y_i].difference({epsilon}))
+                        self._first_cache[X].update(self._first_cache[Y_i].difference({Terminal.epsilon}))
                         if len(self._first_cache[X]) != before:
                             changed = True
 
-                        if epsilon not in self._first_cache[Y_i]:
+                        if Terminal.epsilon not in self._first_cache[Y_i]:
                             # ε not in Y_i so Y_i+1 can't contribute to FIRST(X)
                             break
                     else:
                         # We made it here which means ε was in all Y_i
-                        if epsilon not in self._first_cache[X]:
-                            self._first_cache[X].add(epsilon)
+                        if Terminal.epsilon not in self._first_cache[X]:
+                            self._first_cache[X].add(Terminal.epsilon)
                             change = True
 
     def follow(self, X):
@@ -402,7 +405,6 @@ class Grammar:
 
     def compute_all_follow(self):
         self._follow_cache = dict()
-        epsilon = Terminal(string='ε')
         for A in self.nonterminals:
             self._follow_cache[A] = set()
         self._follow_cache[self.start_symbol].add(Terminal(string='$'))
@@ -422,7 +424,7 @@ class Grammar:
                         # alpha = production[:i] # not actually used
                         beta = production[(i+1):]
                         before = len(self._follow_cache[B])
-                        self._follow_cache[B].update(self.first(beta).difference({epsilon}))
+                        self._follow_cache[B].update(self.first(beta).difference({Terminal.epsilon}))
                         if len(self._follow_cache[B]) != before:
                             changed = True
 
@@ -435,7 +437,7 @@ class Grammar:
                             continue
                         # alpha = production[:i] # not actually used
                         beta = production[(i+1):]
-                        if epsilon in self.first(beta):
+                        if Terminal.epsilon in self.first(beta):
                             before = len(self._follow_cache[B])
                             self._follow_cache[B].update(self._follow_cache[A])
                             if len(self._follow_cache[B]) != before:
@@ -483,6 +485,12 @@ class TextbookGrammar(Grammar):
             stmt -> 'if' expr 'then' stmt 'else' stmt
                 |  'if' expr 'then' stmt
             """
+        cls._grammar_str_dict['4.22'] = \
+            """
+            S -> 'i' E 't' S Sp | 'a'
+            Sp -> 'e' S | 'ε'
+            E -> 'b'
+            """
         cls._grammar_str_dict['4.23'] = \
             """
             S -> 'i' E 't' S | 'i' E 't' S 'e' S | 'a'
@@ -501,6 +509,14 @@ class TextbookGrammar(Grammar):
             S -> 'c' A 'd'
             A -> 'a' 'b' | 'a'
             """
+        cls._grammar_str_dict['4.4.3'] = \
+            """
+            stmt -> 'if' '(' expr ')' stmt 'else' stmt
+                | 'while' '(' expr ')' stmt
+                | '{' stmt_list '}'
+            expr -> 'expr'
+            stmt_list -> stmt stmt_list | 'ε'
+            """
 
     @classmethod
     def _init_grammar_dict(cls):
@@ -513,13 +529,8 @@ class TextbookGrammar(Grammar):
 
 
 def do_stuff():
-    g = TextbookGrammar('4.29')
+    g = TextbookGrammar('4.4.3')
     print(g)
-    print(g.first([]))
-    # print(g.first(Nonterminal('A')))
-    # print(g.first(Nonterminal('S')))
-    print(g.follow(Nonterminal('A')))
-
 
 if __name__ == '__main__':
     do_stuff()
