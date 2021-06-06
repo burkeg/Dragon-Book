@@ -1,8 +1,10 @@
 import copy
-import itertools
+from itertools import combinations, tee
+
 
 import Grammar
 import Tokens
+import LexicalAnalyzer
 
 
 class ParseTree:
@@ -12,12 +14,14 @@ class ParseTree:
 
     # https://stackoverflow.com/questions/20242479/printing-a-tree-data-structure-in-python
     def __str__(self, level=0):
-        ret = "|   "*level+repr(self.symbol)+"\n"
+        ret = "|   "*level+repr(self)+"\n"
         for child in self.children:
             ret += child.__str__(level+1)
         return ret
 
     def __repr__(self):
+        if isinstance(self.symbol, Tokens.EmptyToken):
+            return 'ε'
         return repr(self.symbol)
 
 
@@ -47,7 +51,7 @@ class LL1Parser(Parser):
         # beginning with a terminal in FOLLOW(A).
 
         for A, productions in self._grammar.productions.items():
-            for i, j in itertools.combinations(range(len(productions)), 2):
+            for i, j in combinations(range(len(productions)), 2):
                 alpha = productions[i]
                 beta = productions[j]
                 first_alpha = self._grammar.first(alpha)
@@ -76,7 +80,7 @@ class LL1Parser(Parser):
                 # 1. For each terminal a in FIRST(α), add A -> α to M[A,a].
                 for a in first_alpha:
                     if isinstance(a, Grammar.Terminal):
-                        self._table[A].setdefault(a, set()).add(tuple(alpha))
+                        self._table[A].setdefault(type(a.token), set()).add(tuple(alpha))
 
                 # 2. If ε is in FIRST(α), then for each terminal b in FOLLOW(A), add A -> α
                 # to M[A,b]. If ε is in FIRST(α) and $ is in FOLLOW(A), add A -> α to
@@ -84,13 +88,11 @@ class LL1Parser(Parser):
                 if Grammar.Terminal.epsilon in first_alpha:
                     for b in follow_A:
                         if isinstance(b, Grammar.Terminal):
-                            self._table[A].setdefault(b, set()).add(tuple(alpha))
-                            # if Grammar.Terminal(string='$') in follow_A:
-                            #     self._table[A].setdefault(Grammar.Terminal(string='$'), set()).add(tuple(alpha))
+                            self._table[A].setdefault(type(b.token), set()).add(tuple(alpha))
 
         for A, rules in self._table.items():
             if Grammar.Terminal.epsilon in rules.keys():
-                del self._table[A][Grammar.Terminal.epsilon]
+                del self._table[A][Tokens.EmptyToken]
 
         if self._bypass_checks:
             return
@@ -104,33 +106,37 @@ class LL1Parser(Parser):
         a = input_string.pop(0)
         X = stack[-1]
         while X != Grammar.Terminal.end:
-            if X == a:
+            if isinstance(X, Grammar.Terminal) and isinstance(X.token, type(a.token)):
                 stack.pop()
                 a = input_string.pop(0)
             elif isinstance(X, Grammar.Terminal):
                 raise Exception('Error')
-            elif a not in self._table[X]:
+            elif type(a.token) not in self._table[X]:
                 raise Exception('Error')
             else:
                 # output the production
-                productions = self._table[X][a]
+                productions = self._table[X][type(a.token)]
                 if len(productions) > 1:
                     raise Exception('Special care needed here, this grammar is ambiguous')
                 production = next(iter(productions))
+                print((X, production))
                 yield (X, production)
                 stack.pop()
                 stack.extend(reversed([_ for _ in production if _ != Grammar.Terminal.epsilon]))
             X = stack[-1]
 
-    def to_parse_tree(self, derivation_iterator):
+    def to_parse_tree(self, derivation_iterator, tokens_iterator):
         A, production = next(derivation_iterator)
         curr_node = ParseTree(A)
         for i, child in enumerate(production):
             child_to_add = None
             if isinstance(child, Grammar.Terminal):
-                child_to_add = ParseTree(child)
+                if isinstance(child.token, Tokens.EmptyToken):
+                    child_to_add = ParseTree(Tokens.EmptyToken())
+                else:
+                    child_to_add = ParseTree(next(tokens_iterator))
             else:
-                child_to_add = self.to_parse_tree(derivation_iterator)
+                child_to_add = self.to_parse_tree(derivation_iterator, tokens_iterator)
             curr_node.children.append(child_to_add)
 
         return curr_node
@@ -141,12 +147,17 @@ class LL1Parser(Parser):
 
 def do_stuff():
     g = Grammar.TextbookGrammar('4.28')
-    print(g)
     ll1 = LL1Parser(g)
-
-    as_strings = ['id', '+', 'id', '*', 'id']
-    productions = ll1.produce_derivation([Tokens.Token.create(string) for string in as_strings])
-    tree = ll1.to_parse_tree(productions)
+    lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
+    tokens = list(lexer.process(
+        """
+        variable_A*(last_var) + 
+        one
+        """
+    ))
+    print(tokens)
+    productions = ll1.produce_derivation(iter(tokens))
+    tree = ll1.to_parse_tree(productions, iter(tokens))
     print(tree)
 
 

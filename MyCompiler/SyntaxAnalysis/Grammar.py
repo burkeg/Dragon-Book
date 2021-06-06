@@ -46,6 +46,11 @@ class Terminal(GrammarSymbol):
             raise Exception('Not a valid terminal')
         super().__init__(self.string)
 
+    def __str__(self):
+        return self.string
+
+    __repr__ = __str__
+
 
 Terminal.epsilon = Terminal(string='ε')
 Terminal.end = Terminal(string='$')
