@@ -39,6 +39,9 @@ class Terminal(GrammarSymbol):
         elif string is not None:
             self.token = Tokens.Token.create(string)
             self.string = f"'{self.token.lexeme}'"
+        elif token is not None:
+            self.token = token
+            self.string = f"'{self.token.lexeme}'"
         else:
             raise Exception('Not a valid terminal')
         super().__init__(self.string)

@@ -99,7 +99,7 @@ class LL1Parser(Parser):
                 assert len(rule) == 1, "This should only fail if the grammar is ambiguous which it shouldn't be."
 
     def produce_derivation(self, w):
-        input_string = [Grammar.Terminal(string=term) for term in w] + [Grammar.Terminal.end]
+        input_string = [Grammar.Terminal(token=term) for term in w] + [Grammar.Terminal.end]
         stack = [Grammar.Terminal.end, self._grammar.start_symbol]
         a = input_string.pop(0)
         X = stack[-1]
@@ -144,7 +144,8 @@ def do_stuff():
     print(g)
     ll1 = LL1Parser(g)
 
-    productions = ll1.produce_derivation(['id', '+', 'id', '*', 'id'])
+    as_strings = ['id', '+', 'id', '*', 'id']
+    productions = ll1.produce_derivation([Tokens.Token.create(string) for string in as_strings])
     tree = ll1.to_parse_tree(productions)
     print(tree)
 
