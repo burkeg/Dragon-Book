@@ -102,7 +102,6 @@ class LexicalAnalyzer:
         self._NFA = Automata.NFA(root, alphabet)
         self._simulator = AutomataAlgorithms.NFASimulator(self._NFA)
 
-
     def process(self, input_characters):
         assert isinstance(self._simulator, AutomataAlgorithms.NFASimulator)
         input_elements = Automata.Element.element_list_from_string(input_characters)

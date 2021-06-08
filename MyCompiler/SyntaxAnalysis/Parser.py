@@ -101,31 +101,38 @@ class LL1Parser(Parser):
                 assert len(rule) == 1, "This should only fail if the grammar is ambiguous which it shouldn't be."
 
     def produce_derivation(self, w):
-        input_string = [Grammar.Terminal(token=term) for term in w] + [Grammar.Terminal.end]
+        def to_input_string(tokens):
+            for token in tokens:
+                yield token
+            yield Tokens.EndToken()
+
+        # The input string is a
+        input_string = to_input_string(w)
         stack = [Grammar.Terminal.end, self._grammar.start_symbol]
-        a = input_string.pop(0)
+        a = next(input_string)
         X = stack[-1]
         while X != Grammar.Terminal.end:
-            if isinstance(X, Grammar.Terminal) and isinstance(X.token, type(a.token)):
+            if isinstance(X, Grammar.Terminal) and isinstance(X.token, type(a)):
                 stack.pop()
-                a = input_string.pop(0)
+                a = next(input_string)
+                yield a
             elif isinstance(X, Grammar.Terminal):
                 raise Exception('Error')
-            elif type(a.token) not in self._table[X]:
+            elif type(a) not in self._table[X]:
                 raise Exception('Error')
             else:
                 # output the production
-                productions = self._table[X][type(a.token)]
+                productions = self._table[X][type(a)]
                 if len(productions) > 1:
                     raise Exception('Special care needed here, this grammar is ambiguous')
                 production = next(iter(productions))
-                print((X, production))
+                # print((X, production))
                 yield (X, production)
                 stack.pop()
                 stack.extend(reversed([_ for _ in production if _ != Grammar.Terminal.epsilon]))
             X = stack[-1]
 
-    def to_parse_tree(self, derivation_iterator, tokens_iterator):
+    def to_parse_tree(self, derivation_iterator):
         A, production = next(derivation_iterator)
         curr_node = ParseTree(A)
         for i, child in enumerate(production):
@@ -134,15 +141,12 @@ class LL1Parser(Parser):
                 if isinstance(child.token, Tokens.EmptyToken):
                     child_to_add = ParseTree(Tokens.EmptyToken())
                 else:
-                    child_to_add = ParseTree(next(tokens_iterator))
+                    child_to_add = ParseTree(next(derivation_iterator))
             else:
-                child_to_add = self.to_parse_tree(derivation_iterator, tokens_iterator)
+                child_to_add = self.to_parse_tree(derivation_iterator)
             curr_node.children.append(child_to_add)
 
         return curr_node
-
-
-
 
 
 def do_stuff():
