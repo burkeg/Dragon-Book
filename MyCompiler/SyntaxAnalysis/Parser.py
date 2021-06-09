@@ -63,9 +63,9 @@ class LL1Parser(Parser):
                 follow_A = self._grammar.follow(A)
                 # condition 3. AKA if ε is in FIRST(β), FIRST(α) and FOLLOW(A) must be disjoint sets,
                 # likewise if ε is in FIRST(α).
-                if Grammar.Terminal.epsilon in first_beta:
+                if Grammar.Terminal._epsilon in first_beta:
                     assert len(first_alpha.intersection(follow_A)) == 0
-                if Grammar.Terminal.epsilon in first_alpha:
+                if Grammar.Terminal._epsilon in first_alpha:
                     assert len(first_beta.intersection(follow_A)) == 0
 
     def _build_parsing_table(self):
@@ -85,13 +85,13 @@ class LL1Parser(Parser):
                 # 2. If ε is in FIRST(α), then for each terminal b in FOLLOW(A), add A -> α
                 # to M[A,b]. If ε is in FIRST(α) and $ is in FOLLOW(A), add A -> α to
                 # M[A,$] as well.
-                if Grammar.Terminal.epsilon in first_alpha:
+                if Grammar.Terminal._epsilon in first_alpha:
                     for b in follow_A:
                         if isinstance(b, Grammar.Terminal):
                             self._table[A].setdefault(type(b.token), set()).add(tuple(alpha))
 
         for A, rules in self._table.items():
-            if Grammar.Terminal.epsilon in rules.keys():
+            if Grammar.Terminal._epsilon in rules.keys():
                 del self._table[A][Tokens.EmptyToken]
 
         if self._bypass_checks:
@@ -108,10 +108,10 @@ class LL1Parser(Parser):
 
         # The input string is a
         input_string = to_input_string(w)
-        stack = [Grammar.Terminal.end, self._grammar.start_symbol]
+        stack = [Grammar.Terminal._end, self._grammar.start_symbol]
         a = next(input_string)
         X = stack[-1]
-        while X != Grammar.Terminal.end:
+        while X != Grammar.Terminal._end:
             if isinstance(X, Grammar.Terminal) and isinstance(X.token, type(a)):
                 stack.pop()
                 yield a
@@ -129,7 +129,7 @@ class LL1Parser(Parser):
                 # print((X, production))
                 yield (X, production)
                 stack.pop()
-                stack.extend(reversed([_ for _ in production if _ != Grammar.Terminal.epsilon]))
+                stack.extend(reversed([_ for _ in production if _ != Grammar.Terminal._epsilon]))
             X = stack[-1]
         yield a
 

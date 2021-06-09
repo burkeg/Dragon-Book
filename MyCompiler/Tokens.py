@@ -27,9 +27,12 @@ class Token:
             return IDToken('id')
         elif lexeme == 'num':
             return NumToken('num')
+        elif lexeme == 'str':
+            return NumToken('str')
         for subclass in cls.__subclasses__():
             if subclass == IDToken or \
                     subclass == NumToken or \
+                    subclass == StringLiteralToken or \
                     subclass == ActionToken:
                 continue
             if token := subclass.create(lexeme):
@@ -822,7 +825,7 @@ class VolatileToken(Token):
 
 class EllipsisToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('...')
 
     @classmethod
     def create(cls, lexeme):
@@ -834,7 +837,7 @@ class EllipsisToken(Token):
 
 class RShiftEqualsToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('>>=')
 
     @classmethod
     def create(cls, lexeme):
@@ -846,7 +849,7 @@ class RShiftEqualsToken(Token):
 
 class LShiftEqualsToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('<<=')
 
     @classmethod
     def create(cls, lexeme):
@@ -858,7 +861,7 @@ class LShiftEqualsToken(Token):
 
 class ModEqualsToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('%=')
 
     @classmethod
     def create(cls, lexeme):
@@ -870,7 +873,7 @@ class ModEqualsToken(Token):
 
 class AndEqualsToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('&=')
 
     @classmethod
     def create(cls, lexeme):
@@ -882,7 +885,7 @@ class AndEqualsToken(Token):
 
 class XorEqualsToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('^=')
 
     @classmethod
     def create(cls, lexeme):
@@ -894,7 +897,7 @@ class XorEqualsToken(Token):
 
 class OrEqualsToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('|=')
 
     @classmethod
     def create(cls, lexeme):
@@ -906,7 +909,7 @@ class OrEqualsToken(Token):
 
 class RShiftToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('>>')
 
     @classmethod
     def create(cls, lexeme):
@@ -918,7 +921,7 @@ class RShiftToken(Token):
 
 class LShiftToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('<<')
 
     @classmethod
     def create(cls, lexeme):
@@ -930,7 +933,7 @@ class LShiftToken(Token):
 
 class IncrementToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('++')
 
     @classmethod
     def create(cls, lexeme):
@@ -942,7 +945,7 @@ class IncrementToken(Token):
 
 class DecrementToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('--')
 
     @classmethod
     def create(cls, lexeme):
@@ -954,7 +957,7 @@ class DecrementToken(Token):
 
 class ArrowToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('->')
 
     @classmethod
     def create(cls, lexeme):
@@ -966,7 +969,7 @@ class ArrowToken(Token):
 
 class CommaToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__(',')
 
     @classmethod
     def create(cls, lexeme):
@@ -978,7 +981,7 @@ class CommaToken(Token):
 
 class DotToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('.')
 
     @classmethod
     def create(cls, lexeme):
@@ -990,7 +993,7 @@ class DotToken(Token):
 
 class NotToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('!')
 
     @classmethod
     def create(cls, lexeme):
@@ -1002,7 +1005,7 @@ class NotToken(Token):
 
 class TildeToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('~')
 
     @classmethod
     def create(cls, lexeme):
@@ -1014,7 +1017,7 @@ class TildeToken(Token):
 
 class AsterixToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('*')
 
     @classmethod
     def create(cls, lexeme):
@@ -1026,7 +1029,7 @@ class AsterixToken(Token):
 
 class PercentToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('%')
 
     @classmethod
     def create(cls, lexeme):
@@ -1038,7 +1041,7 @@ class PercentToken(Token):
 
 class LAngleToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('<')
 
     @classmethod
     def create(cls, lexeme):
@@ -1050,7 +1053,7 @@ class LAngleToken(Token):
 
 class RAngleToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('>')
 
     @classmethod
     def create(cls, lexeme):
@@ -1062,7 +1065,7 @@ class RAngleToken(Token):
 
 class QuestionToken(Token):
     def __init__(self):
-        super().__init__('\n')
+        super().__init__('?')
 
     @classmethod
     def create(cls, lexeme):

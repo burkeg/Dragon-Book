@@ -27,8 +27,8 @@ class GrammarSymbol:
 
 
 class Terminal(GrammarSymbol):
-    epsilon = None
-    end = None
+    _epsilon = None
+    _end = None
     def __init__(self, string=None, token=None):
         self.token = None
         assert string is not None or token is not None
@@ -52,8 +52,8 @@ class Terminal(GrammarSymbol):
     __repr__ = __str__
 
 
-Terminal.epsilon = Terminal(string='ε')
-Terminal.end = Terminal(string='$')
+Terminal._epsilon = Terminal(string='ε')
+Terminal._end = Terminal(string='$')
 
 
 class ActionTerminal(Terminal):
@@ -292,57 +292,60 @@ class Grammar:
 
     def left_factored(self):
         new_grammar = copy.copy(self)
-        new_productions = dict()
-        for A, productions in new_grammar.productions.items():
-            # Find the longest prefix α common to two or more of its alternatives
-            production_tuples = [tuple(x) for x in productions]
-            sorted_production_tuples = sorted(production_tuples)
-            longest_prefix_length = -1
-            curr_range = range(2)
-            longest_prefix_range = None
-            while curr_range.stop <= len(sorted_production_tuples):
-                prefix = os.path.commonprefix([sorted_production_tuples[i] for i in curr_range])
-                if len(prefix) > longest_prefix_length:
-                    longest_prefix_length = len(prefix)
-                    longest_prefix_range = curr_range
-                    curr_range = range(curr_range.start, curr_range.stop + 1)
-                else:
-                    if curr_range.start < curr_range.stop - 2:
-                        curr_range = range(curr_range.start + 1, curr_range.stop)
+        changed = True
+        while changed:
+            changed = False
+            new_productions = dict()
+            for A, productions in new_grammar.productions.items():
+                # Find the longest prefix α common to two or more of its alternatives
+                production_tuples = [tuple(x) for x in productions]
+                sorted_production_tuples = sorted(production_tuples)
+                longest_prefix_length = -1
+                curr_range = range(2)
+                longest_prefix_range = None
+                while curr_range.stop <= len(sorted_production_tuples):
+                    prefix = os.path.commonprefix([sorted_production_tuples[i] for i in curr_range])
+                    if len(prefix) > longest_prefix_length:
+                        longest_prefix_length = len(prefix)
+                        longest_prefix_range = curr_range
+                        curr_range = range(curr_range.start, curr_range.stop + 1)
                     else:
-                        curr_range = range(curr_range.start + 1, curr_range.stop + 1)
+                        if curr_range.start < curr_range.stop - 2:
+                            curr_range = range(curr_range.start + 1, curr_range.stop)
+                        else:
+                            curr_range = range(curr_range.start + 1, curr_range.stop + 1)
 
-            if longest_prefix_length < 1:
-                new_productions[A] = productions
-                continue
+                if longest_prefix_length < 1:
+                    new_productions[A] = productions
+                    continue
+                changed = True
+                # Replace all of the A-productions A -> α β_1 | α β_2 | ... | α β_n | gamma
+                # where gamma represents all alternatives that do not begin with α, by
+                # A -> α A' | gamma
+                # A' -> β_1 | β_2 | ... | β_n
+                Ap = A.derive_from(self._suffix_gen)
+                alpha = list(production_tuples[longest_prefix_range.start][:longest_prefix_length])
 
-            # Replace all of the A-productions A -> α β_1 | α β_2 | ... | α β_n | gamma
-            # where gamma represents all alternatives that do not begin with α, by
-            # A -> α A' | gamma
-            # A' -> β_1 | β_2 | ... | β_n
-            Ap = A.derive_from(self._suffix_gen)
-            alpha = list(production_tuples[longest_prefix_range.start][:longest_prefix_length])
+                gamma = []
+                for i, production in enumerate(sorted_production_tuples):
+                    if i not in longest_prefix_range:
+                        gamma.append(list(production))
 
-            gamma = []
-            for i, production in enumerate(sorted_production_tuples):
-                if i not in longest_prefix_range:
-                    gamma.append(list(production))
+                betas = []
+                for i, production in enumerate(sorted_production_tuples):
+                    if i in longest_prefix_range:
+                        new_production = list(production[longest_prefix_length:])
+                        if len(new_production) > 0:
+                            betas.append(new_production)
+                        else:
+                            betas.append([Terminal(string='ε')])
+                            new_grammar.terminals.add(Terminal(string='ε'))
 
-            betas = []
-            for i, production in enumerate(sorted_production_tuples):
-                if i in longest_prefix_range:
-                    new_production = list(production[longest_prefix_length:])
-                    if len(new_production) > 0:
-                        betas.append(new_production)
-                    else:
-                        betas.append([Terminal(string='ε')])
-                        new_grammar.terminals.add(Terminal(string='ε'))
-
-            new_productions[A] = [alpha + [Ap]]
-            new_productions[A].extend(gamma)
-            new_productions[Ap] = betas
-            new_grammar.nonterminals.add(Ap)
-        new_grammar.productions = new_productions
+                new_productions[A] = [alpha + [Ap]]
+                new_productions[A].extend(gamma)
+                new_productions[Ap] = betas
+                new_grammar.nonterminals.add(Ap)
+                new_grammar.productions = new_productions
         new_grammar.simplify()
         return new_grammar
 
@@ -359,13 +362,13 @@ class Grammar:
         first = set()
 
         for X_i in symbol_string:
-            first.update(self._first_cache[X_i].difference({Terminal.epsilon}))
-            if Terminal.epsilon not in self._first_cache[X_i]:
+            first.update(self._first_cache[X_i].difference({Terminal._epsilon}))
+            if Terminal._epsilon not in self._first_cache[X_i]:
                 # ε not in X_i so X_i+1 can't contribute to FIRST(symbol_string)
                 break
         else:
             # We made it here which means ε was in all X_i
-            first.add(Terminal.epsilon)
+            first.add(Terminal._epsilon)
 
         self._first_cache[tuple(symbol_string)] = first
         return first
@@ -380,8 +383,8 @@ class Grammar:
         # If X -> ε is a production, then add ε to FIRST(X).
         for nonterminal in self.nonterminals:
             for productions in self.productions[nonterminal]:
-                if len(productions) == 1 and productions[0] == Terminal.epsilon:
-                    self._first_cache[nonterminal] = {Terminal.epsilon}
+                if len(productions) == 1 and productions[0] == Terminal._epsilon:
+                    self._first_cache[nonterminal] = {Terminal._epsilon}
                     break
             else:
                 self._first_cache[nonterminal] = set()
@@ -393,17 +396,17 @@ class Grammar:
                 for productions in self.productions[X]:
                     for Y_i in productions:
                         before = len(self._first_cache[X])
-                        self._first_cache[X].update(self._first_cache[Y_i].difference({Terminal.epsilon}))
+                        self._first_cache[X].update(self._first_cache[Y_i].difference({Terminal._epsilon}))
                         if len(self._first_cache[X]) != before:
                             changed = True
 
-                        if Terminal.epsilon not in self._first_cache[Y_i]:
+                        if Terminal._epsilon not in self._first_cache[Y_i]:
                             # ε not in Y_i so Y_i+1 can't contribute to FIRST(X)
                             break
                     else:
                         # We made it here which means ε was in all Y_i
-                        if Terminal.epsilon not in self._first_cache[X]:
-                            self._first_cache[X].add(Terminal.epsilon)
+                        if Terminal._epsilon not in self._first_cache[X]:
+                            self._first_cache[X].add(Terminal._epsilon)
                             change = True
 
     def follow(self, X):
@@ -434,7 +437,7 @@ class Grammar:
                         # alpha = production[:i] # not actually used
                         beta = production[(i+1):]
                         before = len(self._follow_cache[B])
-                        self._follow_cache[B].update(self.first(beta).difference({Terminal.epsilon}))
+                        self._follow_cache[B].update(self.first(beta).difference({Terminal._epsilon}))
                         if len(self._follow_cache[B]) != before:
                             changed = True
 
@@ -447,7 +450,7 @@ class Grammar:
                             continue
                         # alpha = production[:i] # not actually used
                         beta = production[(i+1):]
-                        if Terminal.epsilon in self.first(beta):
+                        if Terminal._epsilon in self.first(beta):
                             before = len(self._follow_cache[B])
                             self._follow_cache[B].update(self._follow_cache[A])
                             if len(self._follow_cache[B]) != before:
@@ -535,10 +538,13 @@ class TextbookGrammar(Grammar):
             """
         cls._grammar_str_dict['ANSI C'] = \
             """
+            start ->
+                translation_unit
+                
             primary_expression ->
-                  IDENTIFIER
-                | CONSTANT
-                | STRING_LITERAL
+                  'id'
+                | 'num'
+                | 'str'
                 | '(' expression ')'
             
             postfix_expression ->
@@ -546,10 +552,10 @@ class TextbookGrammar(Grammar):
                 | postfix_expression '[' expression ']'
                 | postfix_expression '(' ')'
                 | postfix_expression '(' argument_expression_list ')'
-                | postfix_expression '.' IDENTIFIER
-                | postfix_expression PTR_OP IDENTIFIER
-                | postfix_expression INC_OP
-                | postfix_expression DEC_OP
+                | postfix_expression '.' 'id'
+                | postfix_expression '*' 'id'
+                | postfix_expression '++'
+                | postfix_expression '--'
             
             argument_expression_list ->
                   assignment_expression
@@ -557,11 +563,11 @@ class TextbookGrammar(Grammar):
             
             unary_expression ->
                   postfix_expression
-                | INC_OP unary_expression
-                | DEC_OP unary_expression
+                | '++' unary_expression
+                | '--' unary_expression
                 | unary_operator cast_expression
-                | SIZEOF unary_expression
-                | SIZEOF '(' type_name ')'
+                | 'sizeof' unary_expression
+                | 'sizeof' '(' type_name ')'
             
             unary_operator ->
                   '&'
@@ -588,20 +594,20 @@ class TextbookGrammar(Grammar):
             
             shift_expression ->
                   additive_expression
-                | shift_expression LEFT_OP additive_expression
-                | shift_expression RIGHT_OP additive_expression
+                | shift_expression '<<' additive_expression
+                | shift_expression '>>' additive_expression
             
             relational_expression ->
                   shift_expression
                 | relational_expression '<' shift_expression
                 | relational_expression '>' shift_expression
-                | relational_expression LE_OP shift_expression
-                | relational_expression GE_OP shift_expression
+                | relational_expression '<=' shift_expression
+                | relational_expression '>=' shift_expression
             
             equality_expression ->
                   relational_expression
-                | equality_expression EQ_OP relational_expression
-                | equality_expression NE_OP relational_expression
+                | equality_expression '==' relational_expression
+                | equality_expression '!=' relational_expression
             
             and_expression ->
                   equality_expression
@@ -617,11 +623,11 @@ class TextbookGrammar(Grammar):
             
             logical_and_expression ->
                   inclusive_or_expression
-                | logical_and_expression AND_OP inclusive_or_expression
+                | logical_and_expression '&&' inclusive_or_expression
             
             logical_or_expression ->
                   logical_and_expression
-                | logical_or_expression OR_OP logical_and_expression
+                | logical_or_expression '||' logical_and_expression
             
             conditional_expression ->
                   logical_or_expression
@@ -633,16 +639,16 @@ class TextbookGrammar(Grammar):
             
             assignment_operator ->
                   '='
-                | MUL_ASSIGN
-                | DIV_ASSIGN
-                | MOD_ASSIGN
-                | ADD_ASSIGN
-                | SUB_ASSIGN
-                | LEFT_ASSIGN
-                | RIGHT_ASSIGN
-                | AND_ASSIGN
-                | XOR_ASSIGN
-                | OR_ASSIGN
+                | '*='
+                | '\='
+                | '%='
+                | '+='
+                | '-='
+                | '<<='
+                | '>>='
+                | '&='
+                | '^='
+                | '|='
             
             expression ->
                   assignment_expression
@@ -672,34 +678,34 @@ class TextbookGrammar(Grammar):
                 | declarator '=' initializer
             
             storage_class_specifier ->
-                  TYPEDEF
-                | EXTERN
-                | STATIC
-                | AUTO
-                | REGISTER
+                  'typedef'
+                | 'extern'
+                | 'static'
+                | 'auto'
+                | 'register'
             
             type_specifier ->
-                  VOID
-                | CHAR
-                | SHORT
-                | INT
-                | LONG
-                | FLOAT
-                | DOUBLE
-                | SIGNED
-                | UNSIGNED
+                  'void'
+                | 'char'
+                | 'short'
+                | 'int'
+                | 'long'
+                | 'float'
+                | 'double'
+                | 'signed'
+                | 'unsigned'
                 | struct_or_union_specifier
                 | enum_specifier
-                | TYPE_NAME
+                | 'id'
             
             struct_or_union_specifier ->
-                  struct_or_union IDENTIFIER '{' struct_declaration_list '}'
+                  struct_or_union 'id' '{' struct_declaration_list '}'
                 | struct_or_union '{' struct_declaration_list '}'
-                | struct_or_union IDENTIFIER
+                | struct_or_union 'id'
             
             struct_or_union ->
-                  STRUCT
-                | UNION
+                  'struct'
+                | 'union'
             
             struct_declaration_list ->
                   struct_declaration
@@ -724,28 +730,28 @@ class TextbookGrammar(Grammar):
                 | declarator ':' constant_expression
             
             enum_specifier ->
-                  ENUM '{' enumerator_list '}'
-                | ENUM IDENTIFIER '{' enumerator_list '}'
-                | ENUM IDENTIFIER
+                  'enum' '{' enumerator_list '}'
+                | 'enum' 'id' '{' enumerator_list '}'
+                | 'enum' 'id'
             
             enumerator_list ->
                   enumerator
                 | enumerator_list ',' enumerator
             
             enumerator ->
-                  IDENTIFIER
-                | IDENTIFIER '=' constant_expression
+                  'id'
+                | 'id' '=' constant_expression
             
             type_qualifier ->
-                  CONST
-                | VOLATILE
+                  'const'
+                | 'volatile'
             
             declarator ->
                   pointer direct_declarator
                 | direct_declarator
             
             direct_declarator ->
-                  IDENTIFIER
+                  'id'
                 | '(' declarator ')'
                 | direct_declarator '[' constant_expression ']'
                 | direct_declarator '[' ']'
@@ -766,7 +772,7 @@ class TextbookGrammar(Grammar):
             
             parameter_type_list ->
                   parameter_list
-                | parameter_list ',' ELLIPSIS
+                | parameter_list ',' 'ellipsis'
             
             parameter_list ->
                   parameter_declaration
@@ -778,8 +784,8 @@ class TextbookGrammar(Grammar):
                 | declaration_specifiers
             
             identifier_list ->
-                  IDENTIFIER
-                | identifier_list ',' IDENTIFIER
+                  'id'
+                | identifier_list ',' 'id'
             
             type_name ->
                   specifier_qualifier_list
@@ -819,9 +825,9 @@ class TextbookGrammar(Grammar):
                 | jump_statement
             
             labeled_statement ->
-                  IDENTIFIER ':' statement
-                | CASE constant_expression ':' statement
-                | DEFAULT ':' statement
+                  'id' ':' statement
+                | 'case' constant_expression ':' statement
+                | 'default' ':' statement
             
             compound_statement ->
                   '{' '}'
@@ -842,22 +848,22 @@ class TextbookGrammar(Grammar):
                 | expression ';'
             
             selection_statement ->
-                  IF '(' expression ')' statement
-                | IF '(' expression ')' statement ELSE statement
-                | SWITCH '(' expression ')' statement
+                  'if' '(' expression ')' statement
+                | 'if' '(' expression ')' statement 'else' statement
+                | 'switch' '(' expression ')' statement
             
             iteration_statement ->
-                  WHILE '(' expression ')' statement
-                | DO statement WHILE '(' expression ')' ';'
-                | FOR '(' expression_statement expression_statement ')' statement
-                | FOR '(' expression_statement expression_statement expression ')' statement
+                  'while' '(' expression ')' statement
+                | 'do' statement 'while' '(' expression ')' ';'
+                | 'for' '(' expression_statement expression_statement ')' statement
+                | 'for' '(' expression_statement expression_statement expression ')' statement
             
             jump_statement ->
-                  GOTO IDENTIFIER ';'
-                | CONTINUE ';'
-                | BREAK ';'
-                | RETURN ';'
-                | RETURN expression ';'
+                  'goto' 'id' ';'
+                | 'continue' ';'
+                | 'break' ';'
+                | 'return' ';'
+                | 'return' expression ';'
             
             translation_unit ->
                   external_declaration
@@ -883,10 +889,14 @@ class TextbookGrammar(Grammar):
 
         cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
         cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
+        cls._grammar_dict['ANSI C refactored'] = cls._grammar_dict['ANSI C']
+        # cls._grammar_dict['ANSI C refactored'].start_symbol = Nonterminal('translation_unit')
+        cls._grammar_dict['ANSI C refactored'] = cls._grammar_dict['ANSI C refactored'].without_left_recursion()
+        cls._grammar_dict['ANSI C refactored2'] = cls._grammar_dict['ANSI C refactored'].left_factored()
 
 
 def do_stuff():
-    g = TextbookGrammar('ANSI C')
+    g = TextbookGrammar('ANSI C refactored2')
     print(g)
 
 if __name__ == '__main__':

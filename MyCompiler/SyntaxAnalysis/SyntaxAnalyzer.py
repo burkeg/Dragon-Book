@@ -15,15 +15,18 @@ class SyntaxAnalyzer:
 
 
 def do_stuff():
-    grammar = Grammar.TextbookGrammar('4.28')
-    lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
-    parser = Parser.LL1Parser(grammar)
+    grammar = Grammar.TextbookGrammar('ANSI C refactored2')
+    lexer = LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer()
+    parser = Parser.LL1Parser(grammar, bypass_checks=False)
     syntax_analyzer = SyntaxAnalyzer(parser)
     tokens = lexer.process(
-        """
-        variable_A*(last_var) + 
-        one
-        """
+        """int x;"""
+#         """
+# int main() {
+#    printf("Hello, World!");
+#    return 0;
+# }
+#         """
     )
     tree = syntax_analyzer.process(tokens)
     print(tree)
