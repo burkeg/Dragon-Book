@@ -114,8 +114,8 @@ class LL1Parser(Parser):
         while X != Grammar.Terminal.end:
             if isinstance(X, Grammar.Terminal) and isinstance(X.token, type(a)):
                 stack.pop()
-                a = next(input_string)
                 yield a
+                a = next(input_string)
             elif isinstance(X, Grammar.Terminal):
                 raise Exception('Error')
             elif type(a) not in self._table[X]:
@@ -131,6 +131,7 @@ class LL1Parser(Parser):
                 stack.pop()
                 stack.extend(reversed([_ for _ in production if _ != Grammar.Terminal.epsilon]))
             X = stack[-1]
+        yield a
 
     def to_parse_tree(self, derivation_iterator):
         A, production = next(derivation_iterator)
@@ -150,18 +151,18 @@ class LL1Parser(Parser):
 
 
 def do_stuff():
-    g = Grammar.TextbookGrammar('4.28')
+    g = Grammar.TextbookGrammar('4.23_verbose')
     ll1 = LL1Parser(g)
     lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
-    tokens = list(lexer.process(
+    tokens = lexer.process(
         """
-        variable_A*(last_var) + 
-        one
+        if (true) { print }
         """
-    ))
-    print(tokens)
-    productions = ll1.produce_derivation(iter(tokens))
-    tree = ll1.to_parse_tree(productions, iter(tokens))
+    )
+    list_tokens = list(tokens)
+    print(list_tokens)
+    productions = ll1.produce_derivation(iter(list_tokens))
+    tree = ll1.to_parse_tree(productions)
     print(tree)
 
 

@@ -48,6 +48,15 @@ class IDToken(Token):
         return IDToken(lexeme)
 
 
+class StringLiteralToken(Token):
+    def __init__(self, lexeme):
+        super().__init__(lexeme)
+
+    @classmethod
+    def create(cls, lexeme):
+        return StringLiteralToken(lexeme)
+
+
 class NumToken(Token):
     def __init__(self, lexeme):
         super().__init__(lexeme)
@@ -144,7 +153,7 @@ class ArithmeticOperatorToken(Token):
         elif lexeme == '-':
             return MinusToken()
         elif lexeme == '*':
-            return MultiplyToken()
+            return AsterixToken()
         elif lexeme == '/':
             return DivideToken()
         else:
@@ -159,11 +168,6 @@ class PlusToken(ArithmeticOperatorToken):
 class MinusToken(ArithmeticOperatorToken):
     def __init__(self):
         super().__init__('-')
-
-
-class MultiplyToken(ArithmeticOperatorToken):
-    def __init__(self):
-        super().__init__('*')
 
 
 class DivideToken(ArithmeticOperatorToken):
@@ -468,14 +472,602 @@ class EmptyToken(Token):
             return None
 
 
-class EndToken(Token):
+class AutoToken(Token):
     def __init__(self):
-        super().__init__('$')
+        super().__init__('auto')
 
     @classmethod
     def create(cls, lexeme):
-        if lexeme == '$':
-            return EndToken()
+        if lexeme == 'auto':
+            return AutoToken()
+        else:
+            return None
+
+
+class BreakToken(Token):
+    def __init__(self):
+        super().__init__('break')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'break':
+            return BreakToken()
+        else:
+            return None
+
+
+class CaseToken(Token):
+    def __init__(self):
+        super().__init__('case')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'case':
+            return CaseToken()
+        else:
+            return None
+
+
+class CharToken(Token):
+    def __init__(self):
+        super().__init__('char')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'char':
+            return CharToken()
+        else:
+            return None
+
+
+class ConstToken(Token):
+    def __init__(self):
+        super().__init__('const')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'const':
+            return ConstToken()
+        else:
+            return None
+
+
+class ContinueToken(Token):
+    def __init__(self):
+        super().__init__('continue')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'continue':
+            return ContinueToken()
+        else:
+            return None
+
+
+class DefaultToken(Token):
+    def __init__(self):
+        super().__init__('default')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'default':
+            return DefaultToken()
+        else:
+            return None
+
+
+class DoToken(Token):
+    def __init__(self):
+        super().__init__('do')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'do':
+            return DoToken()
+        else:
+            return None
+
+
+class DoubleToken(Token):
+    def __init__(self):
+        super().__init__('double')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'double':
+            return DoubleToken()
+        else:
+            return None
+
+
+class EnumToken(Token):
+    def __init__(self):
+        super().__init__('enum')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'enum':
+            return EnumToken()
+        else:
+            return None
+
+
+class ExternToken(Token):
+    def __init__(self):
+        super().__init__('extern')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'extern':
+            return ExternToken()
+        else:
+            return None
+
+
+class FloatToken(Token):
+    def __init__(self):
+        super().__init__('float')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'float':
+            return FloatToken()
+        else:
+            return None
+
+
+class ForToken(Token):
+    def __init__(self):
+        super().__init__('for')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'for':
+            return ForToken()
+        else:
+            return None
+
+
+class GotoToken(Token):
+    def __init__(self):
+        super().__init__('goto')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'goto':
+            return GotoToken()
+        else:
+            return None
+
+
+class IntToken(Token):
+    def __init__(self):
+        super().__init__('int')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'int':
+            return IntToken()
+        else:
+            return None
+
+
+class LongToken(Token):
+    def __init__(self):
+        super().__init__('long')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'long':
+            return LongToken()
+        else:
+            return None
+
+
+class RegisterToken(Token):
+    def __init__(self):
+        super().__init__('register')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'register':
+            return RegisterToken()
+        else:
+            return None
+
+
+class ReturnToken(Token):
+    def __init__(self):
+        super().__init__('return')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'return':
+            return ReturnToken()
+        else:
+            return None
+
+
+class ShortToken(Token):
+    def __init__(self):
+        super().__init__('short')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'short':
+            return ShortToken()
+        else:
+            return None
+
+
+class SignedToken(Token):
+    def __init__(self):
+        super().__init__('signed')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'signed':
+            return SignedToken()
+        else:
+            return None
+
+
+class SizeofToken(Token):
+    def __init__(self):
+        super().__init__('sizeof')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'sizeof':
+            return SizeofToken()
+        else:
+            return None
+
+
+class StaticToken(Token):
+    def __init__(self):
+        super().__init__('static')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'static':
+            return StaticToken()
+        else:
+            return None
+
+
+class StructToken(Token):
+    def __init__(self):
+        super().__init__('struct')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'struct':
+            return StructToken()
+        else:
+            return None
+
+
+class SwitchToken(Token):
+    def __init__(self):
+        super().__init__('switch')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'switch':
+            return SwitchToken()
+        else:
+            return None
+
+
+class TypedefToken(Token):
+    def __init__(self):
+        super().__init__('typedef')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'typedef':
+            return TypedefToken()
+        else:
+            return None
+
+
+class UnionToken(Token):
+    def __init__(self):
+        super().__init__('union')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'union':
+            return UnionToken()
+        else:
+            return None
+
+
+class UnsignedToken(Token):
+    def __init__(self):
+        super().__init__('unsigned')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'unsigned':
+            return UnsignedToken()
+        else:
+            return None
+
+
+class VoidToken(Token):
+    def __init__(self):
+        super().__init__('void')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'void':
+            return VoidToken()
+        else:
+            return None
+
+
+class VolatileToken(Token):
+    def __init__(self):
+        super().__init__('volatile')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == 'volatile':
+            return VolatileToken()
+        else:
+            return None
+
+
+class EllipsisToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '...':
+            return EllipsisToken()
+        else:
+            return None
+
+
+class RShiftEqualsToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '>>=':
+            return RShiftEqualsToken()
+        else:
+            return None
+
+
+class LShiftEqualsToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '<<=':
+            return LShiftEqualsToken()
+        else:
+            return None
+
+
+class ModEqualsToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '%=':
+            return ModEqualsToken()
+        else:
+            return None
+
+
+class AndEqualsToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '&=':
+            return AndEqualsToken()
+        else:
+            return None
+
+
+class XorEqualsToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '^=':
+            return XorEqualsToken()
+        else:
+            return None
+
+
+class OrEqualsToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '|=':
+            return OrEqualsToken()
+        else:
+            return None
+
+
+class RShiftToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '>>':
+            return RShiftToken()
+        else:
+            return None
+
+
+class LShiftToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '<<':
+            return LShiftToken()
+        else:
+            return None
+
+
+class IncrementToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '++':
+            return IncrementToken()
+        else:
+            return None
+
+
+class DecrementToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '--':
+            return DecrementToken()
+        else:
+            return None
+
+
+class ArrowToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '->':
+            return ArrowToken()
+        else:
+            return None
+
+
+class CommaToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == ',':
+            return CommaToken()
+        else:
+            return None
+
+
+class DotToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '.':
+            return DotToken()
+        else:
+            return None
+
+
+class NotToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '!':
+            return NotToken()
+        else:
+            return None
+
+
+class TildeToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '~':
+            return TildeToken()
+        else:
+            return None
+
+
+class AsterixToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '*':
+            return AsterixToken()
+        else:
+            return None
+
+
+class PercentToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '%':
+            return PercentToken()
+        else:
+            return None
+
+
+class LAngleToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '<':
+            return LAngleToken()
+        else:
+            return None
+
+
+class RAngleToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '>':
+            return RAngleToken()
+        else:
+            return None
+
+
+class QuestionToken(Token):
+    def __init__(self):
+        super().__init__('\n')
+
+    @classmethod
+    def create(cls, lexeme):
+        if lexeme == '?':
+            return QuestionToken()
         else:
             return None
 
@@ -486,3 +1078,4 @@ def do_something():
 
 if __name__ == '__main__':
     do_something()
+

@@ -55,7 +55,7 @@ class TestLexicalAnalyzer(TestCase):
         Arith = Tokens.ArithmeticOperatorToken
         Plus = Tokens.PlusToken
         Minus = Tokens.MinusToken
-        Mult = Tokens.MultiplyToken
+        Mult = Tokens.AsterixToken
         Div = Tokens.DivideToken
         Logic = Tokens.LogicOperatorToken
         LAnd = Tokens.LogicAndToken

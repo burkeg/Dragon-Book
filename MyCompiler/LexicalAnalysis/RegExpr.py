@@ -594,8 +594,8 @@ class RegularDefinition:
         assert isinstance(string, str)
         regular_expressions = []
         d_i_str_to_d_i = dict()
-        for line in string.splitlines():
-            split_on_spaces = line.split(' ')
+        for line in string.strip().splitlines():
+            split_on_spaces = line.strip().split(' ')
             d_i_str = f'{{{split_on_spaces[0]}}}'
             r_i_str = ' '.join(split_on_spaces[1:])
             d_i = RegExpr.from_string(r_i_str)
