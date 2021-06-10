@@ -9,13 +9,17 @@ class GrammarSymbol:
     def __init__(self, string):
         self.string = string
 
+    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def __key(self):
+        return self.string
+
     def __hash__(self):
-        return hash(self.string)
+        return hash(self.__key())
 
     def __eq__(self, other):
-        if not isinstance(other, GrammarSymbol):
-            return False
-        return hash(self) == hash(other)
+        if isinstance(other, GrammarSymbol):
+            return self.__key() == other.__key()
+        return NotImplemented
 
     def __str__(self):
         return self.string
@@ -66,6 +70,36 @@ class Nonterminal(GrammarSymbol):
         return Nonterminal(f'{self.string}_{str(next(suffix_gen))}')
 
 
+class LR0Item:
+    def __init__(self, nonterminal, production, dot_position):
+        assert isinstance(nonterminal, Nonterminal)
+        assert isinstance(production, tuple)
+        assert isinstance(dot_position, int)
+        self.A = nonterminal
+        self.production = production
+        self.dot_position = dot_position
+
+    def __repr__(self):
+        ret_str = f'{repr(self.A)} -> '
+        production_strs = []
+        for term in self.production:
+            production_strs.append(repr(term))
+        production_strs.insert(self.dot_position, '.')
+        return ret_str + ' '.join(production_strs)
+
+    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def __key(self):
+        return (self.A, self.production, self.dot_position)
+
+    def __hash__(self):
+        return hash(self.__key())
+
+    def __eq__(self, other):
+        if isinstance(other, LR0Item):
+            return self.__key() == other.__key()
+        return NotImplemented
+
+
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):
         self.terminals = terminals  # A set of terminals
@@ -107,9 +141,9 @@ class Grammar:
                 if len(new_production) == 1 and new_production[0] == A:
                     continue
                 elif len(new_production) == 0:
-                    new_productions.append([Terminal(string='ε')])
+                    new_productions.append((Terminal(string='ε'),))
                 else:
-                    new_productions.append(new_production)
+                    new_productions.append(tuple(new_production))
             self.productions[A] = new_productions
 
         found_terminals = set()
@@ -135,8 +169,6 @@ class Grammar:
             del self.productions[nonterminal]
         self.nonterminals = found_nonterminals
 
-
-
     def verify(self):
         assert isinstance(self.terminals, set)
         assert isinstance(self.nonterminals, set)
@@ -144,7 +176,7 @@ class Grammar:
         for nonterminal, production_list in self.productions.items():
             assert isinstance(nonterminal, Nonterminal)
             for production in production_list:
-                assert isinstance(production, list)
+                assert isinstance(production, tuple)
                 for item in production:
                     assert isinstance(item, Terminal) or isinstance(item, Nonterminal)
 
@@ -210,13 +242,13 @@ class Grammar:
                     rest_of_line = m.group(2).strip()
                 elif m := re.match(r'^\|(.*)$', rest_of_line):
                     # shorthand for starting up another production on this line
-                    productions.setdefault(current_nonterminal, []).append(current_rule)
+                    productions.setdefault(current_nonterminal, []).append(tuple(current_rule))
                     current_rule = []
                     rest_of_line = m.group(1).strip()
                 else:
                     raise Exception('Expected a nonterminal, terminal or | before "' + rest_of_line + '"')
 
-            productions.setdefault(current_nonterminal, []).append(current_rule)
+            productions.setdefault(current_nonterminal, []).append(tuple(current_rule))
         nonterminals = set(productions.keys())
         all_rhs_symbols = set([symbol
                                for productions_for_rule in productions.values()
@@ -281,12 +313,12 @@ class Grammar:
 
         Ap = A.derive_from(self._suffix_gen)
         for beta in not_including_A_i_prefix:
-            A_productions.append(beta + [Ap])
+            A_productions.append(beta + (Ap,))
 
         for alpha in including_A_i_prefix:
             Ap_productions.append(
                 alpha[1:] +
-                [Ap])
+                (Ap,))
         Ap_productions.append([Terminal(string='ε')])
         return A_productions, (Ap, Ap_productions)
 
@@ -319,9 +351,9 @@ class Grammar:
                     new_productions[A] = productions
                     continue
                 changed = True
-                # Replace all of the A-productions A -> α β_1 | α β_2 | ... | α β_n | gamma
-                # where gamma represents all alternatives that do not begin with α, by
-                # A -> α A' | gamma
+                # Replace all of the A-productions A -> α β_1 | α β_2 | ... | α β_n | γ
+                # where γ represents all alternatives that do not begin with α, by
+                # A -> α A' | γ
                 # A' -> β_1 | β_2 | ... | β_n
                 Ap = A.derive_from(self._suffix_gen)
                 alpha = list(production_tuples[longest_prefix_range.start][:longest_prefix_length])
@@ -456,8 +488,41 @@ class Grammar:
                             if len(self._follow_cache[B]) != before:
                                 changed = True
 
+    def closure(self, I):
+        assert isinstance(I, set)
+        if len(I) == 0:
+            return I
+        assert isinstance(next(iter(I)), LR0Item)
 
+        # Initially, add every item in I to CLOSURE(I)
+        closure = copy.copy(I)
+        last_len = None
 
+        # If A -> α . B β is in CLOSURE(I) and B -> γ is a production, then add the
+        # item B -> . γ to CLOSURE(I), if it is not already there. Apply this rule
+        # until no more new items can be added to CLOSURE(I).
+        while last_len != len(closure):
+            last_len = len(closure)
+
+            for item in copy.copy(closure):
+                assert isinstance(item, LR0Item)
+                A = item.A
+                production = item.production
+                if item.dot_position > len(production):
+                    # This means the dot is to the right of the final terminal/nonterminal
+                    continue
+
+                alpha = production[:item.dot_position]
+                B = production[item.dot_position]
+                beta = production[(item.dot_position + 1):]
+                if isinstance(B, Nonterminal):
+                    for gamma in self.productions[B]:
+                        closure.add(
+                            LR0Item(
+                            nonterminal=B,
+                            production=gamma,
+                            dot_position=0))
+        return closure
 
 class TextbookGrammar(Grammar):
     _grammar_dict = dict()
@@ -535,6 +600,13 @@ class TextbookGrammar(Grammar):
             S -> 'if' '(' E ')' '{' S '}' ELSE_CLAUSE | 'id'
             ELSE_CLAUSE -> 'else' '{' S '}' | 'ε'
             E -> 'id'
+            """
+        cls._grammar_str_dict['4.40'] = \
+            """
+            Ep -> E
+            E -> E '+' T | T
+            T -> T '*' F | F
+            F -> '(' E ')' | 'id'
             """
         cls._grammar_str_dict['ANSI C'] = \
             """

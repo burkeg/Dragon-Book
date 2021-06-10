@@ -26,15 +26,34 @@ class ParseTree:
 
 
 class Parser:
-    pass
+    def __init__(self, grammar):
+        self._grammar = grammar
+
+    def _verify(self):
+        raise NotImplementedError()
+
+    def _prepare_internals(self):
+        raise NotImplementedError()
+
+    def produce_derivation(self, w):
+        raise NotImplementedError()
+
+    def to_parse_tree(self, derivation_iterator):
+        raise NotImplementedError()
+
+    def _prepare_internals(self):
+        raise NotImplementedError()
 
 
 class LL1Parser(Parser):
     def __init__(self, grammar, bypass_checks=False):
-        self._grammar = grammar
+        super().__init__(grammar)
         self._table = dict()
         self._bypass_checks = bypass_checks
+        self._prepare_internals()
         self._verify()
+
+    def _prepare_internals(self):
         self._build_parsing_table()
 
     def _verify(self):
@@ -150,19 +169,38 @@ class LL1Parser(Parser):
         return curr_node
 
 
+class LR1Parser(Parser):
+    def __init__(self, grammar):
+        super().__init__(grammar)
+        self._prepare_internals()
+        self._verify()
+
+    def _verify(self):
+        assert isinstance(self._grammar, Grammar.Grammar)
+
+    def _prepare_internals(self):
+        c = self._grammar.closure(
+            {
+                Grammar.LR0Item(
+                    self._grammar.start_symbol,
+                    self._grammar.productions[self._grammar.start_symbol][0],
+                    0)})
+        print(c)
+
+
 def do_stuff():
-    g = Grammar.TextbookGrammar('4.23_verbose')
-    ll1 = LL1Parser(g)
+    g = Grammar.TextbookGrammar('4.40')
+    lr1 = LR1Parser(g)
     lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
     tokens = lexer.process(
         """
-        if (true) { print }
+        a+b
         """
     )
     list_tokens = list(tokens)
     print(list_tokens)
-    productions = ll1.produce_derivation(iter(list_tokens))
-    tree = ll1.to_parse_tree(productions)
+    productions = lr1.produce_derivation(iter(list_tokens))
+    tree = lr1.to_parse_tree(productions)
     print(tree)
 
 
