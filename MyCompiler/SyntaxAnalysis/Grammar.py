@@ -102,13 +102,21 @@ class LR0Item:
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol):
+        assert isinstance(terminals, set)
+        assert isinstance(nonterminals, set)
+        assert isinstance(productions, dict)
         self.terminals = terminals  # A set of terminals
         self.nonterminals = nonterminals  # A set of nonterminals
         self.productions = productions  # A dictionary of nonterminals to lists of terminals/nonterminals
         self.start_symbol = start_symbol  # The starting point for all derivations from this grammar
-        self.verify()
+        self._verify()
         self._first_cache = None
         self._follow_cache = None
+        self._closure_cache = dict()
+        self._goto_cache = dict()
+        self._items_cache = None
+        self._is_augmented = False
+        self._prev_start_symbol = None
         self._suffix_gen = self._suffix_gen_func()
 
     def __str__(self):
@@ -169,10 +177,7 @@ class Grammar:
             del self.productions[nonterminal]
         self.nonterminals = found_nonterminals
 
-    def verify(self):
-        assert isinstance(self.terminals, set)
-        assert isinstance(self.nonterminals, set)
-        assert isinstance(self.productions, dict)
+    def _verify(self):
         for nonterminal, production_list in self.productions.items():
             assert isinstance(nonterminal, Nonterminal)
             for production in production_list:
@@ -489,8 +494,12 @@ class Grammar:
                                 changed = True
 
     def closure(self, I):
+        if frozenset(I) in self._closure_cache:
+            return self._closure_cache[frozenset(I)]
+
         assert isinstance(I, set)
         if len(I) == 0:
+            self._closure_cache[frozenset(I)] = I
             return I
         assert isinstance(next(iter(I)), LR0Item)
 
@@ -508,8 +517,8 @@ class Grammar:
                 assert isinstance(item, LR0Item)
                 A = item.A
                 production = item.production
-                if item.dot_position > len(production):
-                    # This means the dot is to the right of the final terminal/nonterminal
+                if item.dot_position >= len(production):
+                    # This means the dot is to the right of the final symbol
                     continue
 
                 alpha = production[:item.dot_position]
@@ -522,7 +531,89 @@ class Grammar:
                             nonterminal=B,
                             production=gamma,
                             dot_position=0))
+
+        self._closure_cache[frozenset(I)] = closure
         return closure
+
+    def goto(self, I, X):
+        # Returns the closure of the set of all items [A -> α X . β] such that [A -> α . X β] is in I.
+
+        if (frozenset(I), X) in self._goto_cache:
+            return self._goto_cache[(frozenset(I), X)]
+
+        self._goto_cache = dict()
+
+        goto = set()
+        last_len = None
+
+        while last_len != len(goto):
+            last_len = len(goto)
+
+            for item in I:
+                assert isinstance(item, LR0Item)
+                A = item.A
+                production = item.production
+                if item.dot_position >= len(production):
+                    # This means the dot is to the right of the final symbol
+                    continue
+
+                alpha = production[:item.dot_position]
+                potential_X = production[item.dot_position]
+                beta = production[(item.dot_position + 1):]
+
+                if potential_X == X:
+                    goto.add(
+                        LR0Item(
+                        nonterminal=A,
+                        production=item.production,
+                        dot_position=item.dot_position + 1))
+
+        retval = self.closure(goto)
+        self._closure_cache[(frozenset(I), X)] = self.closure(retval)
+        return retval
+
+    def augment(self):
+        old_start = self.start_symbol
+        new_start = old_start.derive_from(self._suffix_gen)
+        assert isinstance(old_start, Nonterminal)
+        self.productions[new_start] = [(old_start, )]
+        self.nonterminals.add(new_start)
+        self._is_augmented = True
+        self._prev_start_symbol = old_start
+        self.start_symbol = new_start
+
+    def items(self):
+        if self._items_cache is not None:
+            return self._items_cache
+
+        self._items_cache = dict()
+
+        if not self._is_augmented:
+            self.augment()
+
+        C = {frozenset(self.closure(
+            {
+                LR0Item(
+                    nonterminal=self.start_symbol,
+                    production=(self._prev_start_symbol, ),
+                    dot_position=0)}))}
+
+
+        last_len = None
+
+        while last_len != len(C):
+            last_len = len(C)
+
+            for I in copy.copy(C):
+                assert isinstance(I, frozenset)
+                for X in self.terminals.union(self.nonterminals):
+                    goto = self.goto(I, X)
+                    if len(goto) > 0:
+                        C.add(frozenset(goto))
+
+        self._items_cache = C
+        return C
+
 
 class TextbookGrammar(Grammar):
     _grammar_dict = dict()
@@ -604,6 +695,12 @@ class TextbookGrammar(Grammar):
         cls._grammar_str_dict['4.40'] = \
             """
             Ep -> E
+            E -> E '+' T | T
+            T -> T '*' F | F
+            F -> '(' E ')' | 'id'
+            """
+        cls._grammar_str_dict['4.40_2'] = \
+            """
             E -> E '+' T | T
             T -> T '*' F | F
             F -> '(' E ')' | 'id'

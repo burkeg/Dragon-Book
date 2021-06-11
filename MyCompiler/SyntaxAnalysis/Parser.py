@@ -27,6 +27,7 @@ class ParseTree:
 
 class Parser:
     def __init__(self, grammar):
+        assert isinstance(grammar, Grammar.Grammar)
         self._grammar = grammar
 
     def _verify(self):
@@ -168,28 +169,24 @@ class LL1Parser(Parser):
 
         return curr_node
 
-
+test
 class LR1Parser(Parser):
     def __init__(self, grammar):
+        assert isinstance(grammar, Grammar.Grammar)
         super().__init__(grammar)
         self._prepare_internals()
         self._verify()
 
     def _verify(self):
-        assert isinstance(self._grammar, Grammar.Grammar)
+        pass
 
     def _prepare_internals(self):
-        c = self._grammar.closure(
-            {
-                Grammar.LR0Item(
-                    self._grammar.start_symbol,
-                    self._grammar.productions[self._grammar.start_symbol][0],
-                    0)})
-        print(c)
+        print(self._grammar.items())
 
 
 def do_stuff():
-    g = Grammar.TextbookGrammar('4.40')
+    g = Grammar.TextbookGrammar('4.40_2')
+    g.augment()
     lr1 = LR1Parser(g)
     lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
     tokens = lexer.process(
