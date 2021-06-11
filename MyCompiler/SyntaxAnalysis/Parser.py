@@ -1,5 +1,6 @@
 import copy
 from itertools import combinations, tee
+import pprint as pp
 
 
 import Grammar
@@ -169,7 +170,7 @@ class LL1Parser(Parser):
 
         return curr_node
 
-test
+
 class LR1Parser(Parser):
     def __init__(self, grammar):
         assert isinstance(grammar, Grammar.Grammar)
@@ -181,7 +182,7 @@ class LR1Parser(Parser):
         pass
 
     def _prepare_internals(self):
-        print(self._grammar.items())
+        pp.pprint(self._grammar.items())
 
 
 def do_stuff():
