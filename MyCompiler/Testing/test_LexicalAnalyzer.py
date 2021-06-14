@@ -107,7 +107,7 @@ class TestLexicalAnalyzer(TestCase):
                  EndStmt, If, Else, While, LAnd, LOr, BAnd, BOr, BXor, Colon],
         }
 
-        lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
+        lexer = LexicalAnalyzer.LexicalAnalyzer.basic_expression_lexer()
         for string, expected_tokens in test_cases.items():
             with self.subTest(string=string):
                 for token, expected_token in zip(lexer.process(string), expected_tokens):

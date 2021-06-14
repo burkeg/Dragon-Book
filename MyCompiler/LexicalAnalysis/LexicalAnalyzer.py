@@ -136,7 +136,7 @@ class LexicalAnalyzer:
             input_elements = input_elements[chars_consumed:]
 
     @staticmethod
-    def default_lexer():
+    def basic_expression_lexer():
         reg_def = RegExpr.RegularDefinition.from_string(
             r"""
                 ws \s+

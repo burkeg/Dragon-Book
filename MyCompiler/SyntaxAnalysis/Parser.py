@@ -255,13 +255,21 @@ class LRParsingTable:
                     if item.A == self._grammar.start_symbol:
                         # (b)
                         # If [S' -> S] is in I_i, then set ACTION[i, $] to "accept."
-                        self._action_table[(state.ID, Tokens.EndToken)] = (LRAction.ACCEPT, None)
+                        key = (state.ID, Tokens.EndToken)
+                        value = (LRAction.ACCEPT, None)
+                        assert key not in self._action_table or self._action_table[key] == value, \
+                            'Grammar is not SLR(1), conflicting actions exist.'
+                        self._action_table[key] = value
                     else:
                         # (c)
                         # If [A -> α .] is in I_i, then set ACTION[i, a] to "reduce A -> α" for all
                         # a in FOLLOW(A); here A may not be S'.
                         for a in self._grammar.follow(item.A):
-                            self._action_table[(state.ID, type(a.token))] = (LRAction.REDUCE, item)
+                            key = (state.ID, type(a.token))
+                            value = (LRAction.REDUCE, item)
+                            assert key not in self._action_table or self._action_table[key] == value, \
+                                'Grammar is not SLR(1), conflicting actions exist.'
+                            self._action_table[key] = value
                 else:
                     a = item.production[item.dot_position]
 
@@ -271,7 +279,12 @@ class LRParsingTable:
                         # "shift j ." Here a must be a terminal.
                         if I_j := self._grammar.goto(state.I(), a):
                             if j := self.find_state(self._states, I_j):
-                                self._action_table[(state.ID, type(a.token))] = (LRAction.SHIFT, j.ID)
+                                key = (state.ID, type(a.token))
+                                value = (LRAction.SHIFT, j.ID)
+                                assert key not in self._action_table or self._action_table[key] == value, \
+                                    'Grammar is not SLR(1), conflicting actions exist.'
+
+                                self._action_table[key] = value
 
     def setup(self):
         self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
@@ -397,14 +410,19 @@ def do_stuff():
     lexer = LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer()
     tokens = lexer.process(
         """
-        int i;
+        int main()
+        {
+        
+        }
         """
     )
     list_tokens = list(tokens)
-    print(list_tokens)
+    pp.pprint(list_tokens)
     productions = lr1.produce_derivation(iter(list_tokens))
-    tree = lr1.to_parse_tree(productions)
-    print(tree)
+    list_productions = list(productions)
+    pp.pprint(list_productions)
+    tree = lr1.to_parse_tree(iter(list_productions))
+    pp.pprint(tree)
 
 
     # g = Grammar.TextbookGrammar('4.40_2')
