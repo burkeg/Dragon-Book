@@ -391,13 +391,13 @@ class LR1Parser(Parser):
 
 
 def do_stuff():
-    g = Grammar.TextbookGrammar('4.40_2')
+    g = Grammar.TextbookGrammar('ANSI C')
     g.augment()
     lr1 = LR1Parser(g)
-    lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
+    lexer = LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer()
     tokens = lexer.process(
         """
-        a*b+c
+        int i;
         """
     )
     list_tokens = list(tokens)
@@ -405,6 +405,22 @@ def do_stuff():
     productions = lr1.produce_derivation(iter(list_tokens))
     tree = lr1.to_parse_tree(productions)
     print(tree)
+
+
+    # g = Grammar.TextbookGrammar('4.40_2')
+    # g.augment()
+    # lr1 = LR1Parser(g)
+    # lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
+    # tokens = lexer.process(
+    #     """
+    #     a*b+c
+    #     """
+    # )
+    # list_tokens = list(tokens)
+    # print(list_tokens)
+    # productions = lr1.produce_derivation(iter(list_tokens))
+    # tree = lr1.to_parse_tree(productions)
+    # print(tree)
 
     # g = Grammar.TextbookGrammar('4.28')
     # ll1 = LL1Parser(g)

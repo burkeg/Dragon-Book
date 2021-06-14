@@ -569,6 +569,8 @@ class Grammar:
         return retval
 
     def augment(self):
+        if self._is_augmented:
+            return
         old_start = self.start_symbol
         new_start = old_start.derive_from(self._suffix_gen)
         assert isinstance(old_start, Nonterminal)
