@@ -1,8 +1,9 @@
 import copy
 from itertools import combinations, tee
 import pprint as pp
+from enum import Enum
 
-
+import Automata
 import Grammar
 import Tokens
 import LexicalAnalyzer
@@ -135,7 +136,7 @@ class LL1Parser(Parser):
         while X != Grammar.Terminal._end:
             if isinstance(X, Grammar.Terminal) and isinstance(X.token, type(a)):
                 stack.pop()
-                yield a
+                yield a, None
                 a = next(input_string)
             elif isinstance(X, Grammar.Terminal):
                 raise Exception('Error')
@@ -171,10 +172,143 @@ class LL1Parser(Parser):
         return curr_node
 
 
+class LRState(Automata.DFAState):
+    def __init__(self, lr0_set, ID=-1):
+        super().__init__(name=repr(lr0_set), ID=ID)
+        self._lr0_set = lr0_set
+
+    def I(self):
+        return self._lr0_set
+
+    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def _key(self):
+        return self._lr0_set
+
+    def __hash__(self):
+        return hash(self._key())
+
+    def __eq__(self, other):
+        if isinstance(other, LRState):
+            return self._key() == other._key()
+        return NotImplemented
+
+    def __repr__(self):
+        return f'LRState({repr(self._lr0_set)}'
+
+    def __contains__(self, key):
+        return key in self._lr0_set
+
+    def __iter__(self):
+        return iter(self._lr0_set)
+
+
+class LRAction(Enum):
+    SHIFT = 1
+    REDUCE = 2
+    ACCEPT = 3
+    ERROR = 4
+
+
+class LRParsingTable:
+    def __init__(self, grammar):
+        assert isinstance(grammar, Grammar.Grammar)
+        self._grammar = grammar
+        self._states = []
+        self._action_table = dict()
+        self._goto_table = dict()
+        self.start_state = None
+        self.setup()
+
+    def _find_state_with_item(self, item):
+        assert isinstance(item, Grammar.LR0Item)
+        for state in self._states:
+            assert isinstance(state, LRState)
+            if item in state:
+                return state
+
+        return None
+
+    def find_state(self, states, I):
+        target_state = LRState(I)
+        for state in states:
+            if state == target_state:
+                return state
+        else:
+            return None
+
+    def setup_goto(self):
+        for i in self._states:
+            assert isinstance(i, LRState)
+            for A in self._grammar.nonterminals:
+                if I_j := self._grammar.goto(i.I(), A):
+                    if j := self.find_state(self._states, I_j):
+                        self._goto_table[(i.ID, A)] = j.ID
+
+    def setup_action(self):
+        for state in self._states:
+            # Let's determine the output transitions:
+            for item in state:
+                assert isinstance(item, Grammar.LR0Item)
+                if item.dot_position == len(item.production):
+                    # Only if we are in the set that contains the starting symbol with the production
+                    # where the dot is all the way on the right.
+                    if item.A == self._grammar.start_symbol:
+                        # (b)
+                        # If [S' -> S] is in I_i, then set ACTION[i, $] to "accept."
+                        self._action_table[(state.ID, Tokens.EndToken)] = (LRAction.ACCEPT, None)
+                    else:
+                        # (c)
+                        # If [A -> α .] is in I_i, then set ACTION[i, a] to "reduce A -> α" for all
+                        # a in FOLLOW(A); here A may not be S'.
+                        for a in self._grammar.follow(item.A):
+                            self._action_table[(state.ID, type(a.token))] = (LRAction.REDUCE, item)
+                else:
+                    a = item.production[item.dot_position]
+
+                    if isinstance(a, Grammar.Terminal):
+                        # (a)
+                        # If [A -> α . a β] is in I_i and GOTO(I_i, a) = I_j, then set ACTION[i, a] to
+                        # "shift j ." Here a must be a terminal.
+                        if I_j := self._grammar.goto(state.I(), a):
+                            if j := self.find_state(self._states, I_j):
+                                self._action_table[(state.ID, type(a.token))] = (LRAction.SHIFT, j.ID)
+
+    def setup(self):
+        self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+
+        self.start_state = self._find_state_with_item(
+            Grammar.LR0Item(
+                A=self._grammar.start_symbol,
+                production=self._grammar.productions[self._grammar.start_symbol][0],
+                dot_position=0))
+
+        self.setup_goto()
+        self.setup_action()
+
+    def action(self, s, a):
+        assert isinstance(s, LRState)
+        assert isinstance(a, Grammar.Terminal)
+        key = (s.ID, type(a.token))
+        if key not in self._action_table:
+            return LRAction.ERROR, None
+        action, data = self._action_table[key]
+        if action == LRAction.SHIFT:
+            return action, self._states[data]
+        else:
+            return action, data
+
+    def goto(self, t, A):
+        assert isinstance(t, LRState)
+        assert isinstance(A, Grammar.Nonterminal)
+        goto = self._goto_table[(t.ID, A)]
+        return self._states[goto]
+
+
 class LR1Parser(Parser):
     def __init__(self, grammar):
         assert isinstance(grammar, Grammar.Grammar)
         super().__init__(grammar)
+        self._parsing_table = None
         self._prepare_internals()
         self._verify()
 
@@ -182,7 +316,78 @@ class LR1Parser(Parser):
         pass
 
     def _prepare_internals(self):
-        pp.pprint(self._grammar.items())
+        self._parsing_table = LRParsingTable(self._grammar)
+        # pp.pprint(self._grammar.items())
+
+    def produce_derivation(self, w):
+        assert isinstance(self._parsing_table, LRParsingTable)
+        def to_input_string(tokens):
+            for token in tokens:
+                yield Grammar.Terminal(token=token)
+            yield Grammar.Terminal._end
+
+        # The input string is a
+        input_string = to_input_string(w)
+        stack = [self._parsing_table.start_state]
+        a = next(input_string)
+        while True:
+            s = stack[-1]
+            action, data = self._parsing_table.action(s, a)
+            if action == LRAction.SHIFT:
+                t = data
+                assert isinstance(t, LRState)
+                stack.append(t)
+                yield a.token, None
+                a = next(input_string)
+
+            elif action == LRAction.REDUCE:
+                item = data
+                assert isinstance(item, Grammar.LR0Item)
+                for _ in item.production:
+                    stack.pop(-1)
+                t = stack[-1]
+                stack.append(self._parsing_table.goto(t, item.A))
+                yield item.A, item.production
+
+            elif action == LRAction.ACCEPT:
+                # Success!
+                break
+            elif action == LRAction.ERROR:
+                # Handle error
+                break
+            else:
+                raise Exception('Unknown action.')
+
+    def to_parse_tree(self, derivation_iterator):
+        children = []
+        for data in derivation_iterator:
+            if data[1] == None:
+                child_token = data[0]
+                # This is a terminal, we just shifted out a token
+                children.append(ParseTree(child_token))
+            else:
+                parent = data[0]
+                production = data[1]
+                # assert len(production) == len(children)
+                parent_tree = ParseTree(parent)
+                parent_tree.children = children[-len(production):]
+                children[-len(production):] = [parent_tree]
+        assert len(children) == 1
+        return children[0]
+        # A, production = next(derivation_iterator)
+        # curr_node = ParseTree(A)
+        # for i, child in enumerate(production):
+        #     child_to_add = None
+        #     if isinstance(child, Grammar.Terminal):
+        #         if isinstance(child.token, Tokens.EmptyToken):
+        #             child_to_add = ParseTree(Tokens.EmptyToken())
+        #         else:
+        #             child_to_add = ParseTree(next(derivation_iterator))
+        #     else:
+        #         child_to_add = self.to_parse_tree(derivation_iterator)
+        #     curr_node.children.append(child_to_add)
+        #
+        # return curr_node
 
 
 def do_stuff():
@@ -192,7 +397,7 @@ def do_stuff():
     lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
     tokens = lexer.process(
         """
-        a+b
+        a*b+c
         """
     )
     list_tokens = list(tokens)
@@ -200,6 +405,19 @@ def do_stuff():
     productions = lr1.produce_derivation(iter(list_tokens))
     tree = lr1.to_parse_tree(productions)
     print(tree)
+
+    # g = Grammar.TextbookGrammar('4.28')
+    # ll1 = LL1Parser(g)
+    # lexer = LexicalAnalyzer.LexicalAnalyzer.default_lexer()
+    # tokens = list(lexer.process(
+    #     """
+    #     a*b+c
+    #     """
+    # ))
+    # print(tokens)
+    # productions = ll1.produce_derivation(iter(tokens))
+    # tree = ll1.to_parse_tree(productions)
+    # print(tree)
 
 
 if __name__ == '__main__':

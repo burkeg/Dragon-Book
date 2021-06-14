@@ -10,21 +10,19 @@ class GrammarSymbol:
         self.string = string
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
-    def __key(self):
+    def _key(self):
         return self.string
 
     def __hash__(self):
-        return hash(self.__key())
+        return hash(self._key())
 
     def __eq__(self, other):
         if isinstance(other, GrammarSymbol):
-            return self.__key() == other.__key()
+            return self._key() == other._key()
         return NotImplemented
 
-    def __str__(self):
-        return self.string
-
-    __repr__ = __str__
+    def __repr__(self):
+        return repr(self.string)
 
     def __lt__(self, other):
         return self.string < other.string
@@ -71,11 +69,11 @@ class Nonterminal(GrammarSymbol):
 
 
 class LR0Item:
-    def __init__(self, nonterminal, production, dot_position):
-        assert isinstance(nonterminal, Nonterminal)
+    def __init__(self, A, production, dot_position):
+        assert isinstance(A, Nonterminal)
         assert isinstance(production, tuple)
         assert isinstance(dot_position, int)
-        self.A = nonterminal
+        self.A = A
         self.production = production
         self.dot_position = dot_position
 
@@ -88,15 +86,15 @@ class LR0Item:
         return ret_str + ' '.join(production_strs)
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
-    def __key(self):
+    def _key(self):
         return (self.A, self.production, self.dot_position)
 
     def __hash__(self):
-        return hash(self.__key())
+        return hash(self._key())
 
     def __eq__(self, other):
         if isinstance(other, LR0Item):
-            return self.__key() == other.__key()
+            return hash(self) == hash(other)
         return NotImplemented
 
 
@@ -528,7 +526,7 @@ class Grammar:
                     for gamma in self.productions[B]:
                         closure.add(
                             LR0Item(
-                            nonterminal=B,
+                            A=B,
                             production=gamma,
                             dot_position=0))
 
@@ -540,8 +538,6 @@ class Grammar:
 
         if (frozenset(I), X) in self._goto_cache:
             return self._goto_cache[(frozenset(I), X)]
-
-        self._goto_cache = dict()
 
         goto = set()
         last_len = None
@@ -564,12 +560,12 @@ class Grammar:
                 if potential_X == X:
                     goto.add(
                         LR0Item(
-                        nonterminal=A,
+                        A=A,
                         production=item.production,
                         dot_position=item.dot_position + 1))
 
         retval = self.closure(goto)
-        self._closure_cache[(frozenset(I), X)] = self.closure(retval)
+        self._goto_cache[(frozenset(I), X)] = retval
         return retval
 
     def augment(self):
@@ -594,7 +590,7 @@ class Grammar:
         C = {frozenset(self.closure(
             {
                 LR0Item(
-                    nonterminal=self.start_symbol,
+                    A=self.start_symbol,
                     production=(self._prev_start_symbol, ),
                     dot_position=0)}))}
 
