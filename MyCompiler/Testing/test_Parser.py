@@ -68,6 +68,28 @@ class Test(TestCase):
                         """,
                     ]
                 ),
+                (
+                    Grammar.TextbookGrammar('4.55'),
+                    Parser.SLR1Parser,
+                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    [
+                        """
+                        a * b + c
+                        """,
+                        """
+                        a
+                        """,
+                        """
+                        (ab)
+                        """,
+                        """
+                        a*b*c
+                        """,
+                        """
+                        a+b*c
+                        """,
+                    ]
+                ),
             ]
 
         for grammar, parser_type, lexer, test_cases in test_data:

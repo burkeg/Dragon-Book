@@ -173,16 +173,16 @@ class LL1Parser(Parser):
 
 
 class LRState(Automata.DFAState):
-    def __init__(self, lr0_set, ID=-1):
-        super().__init__(name=repr(lr0_set), ID=ID)
-        self._lr0_set = lr0_set
+    def __init__(self, lr_set, ID=-1):
+        super().__init__(name=repr(lr_set), ID=ID)
+        self._lr_set = lr_set
 
     def I(self):
-        return self._lr0_set
+        return self._lr_set
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
-        return self._lr0_set
+        return self._lr_set
 
     def __hash__(self):
         return hash(self._key())
@@ -193,13 +193,25 @@ class LRState(Automata.DFAState):
         return NotImplemented
 
     def __repr__(self):
-        return f'LRState({repr(self._lr0_set)}'
+        return f'LRState({repr(sorted(self._lr_set))}'
 
     def __contains__(self, key):
-        return key in self._lr0_set
+        return key in self._lr_set
 
     def __iter__(self):
-        return iter(self._lr0_set)
+        return iter(sorted(self._lr_set))
+
+    def __lt__(self, other):
+        if isinstance(other, LRState):
+            if len(self._key()) == len(other._key()):
+                for A, B in zip(sorted(self._lr_set), sorted(other._lr_set)):
+                    if A == B:
+                        continue
+                    return A < B
+                return False # We made it all the way through the loop and all elements were equal
+            else:
+                return len(self._key()) < len(other._key())
+        return NotImplemented
 
 
 class LRAction(Enum):
@@ -253,7 +265,7 @@ class SLRParsingTable:
                     # Only if we are in the set that contains the starting symbol with the production
                     # where the dot is all the way on the right.
                     if item.A == self._grammar.start_symbol:
-                        # (b)
+                        # (c)
                         # If [S' -> S] is in I_i, then set ACTION[i, $] to "accept."
                         key = (state.ID, Tokens.EndToken)
                         value = (LRAction.ACCEPT, None)
@@ -261,7 +273,7 @@ class SLRParsingTable:
                             'Grammar is not SLR(1), conflicting actions exist.'
                         self._action_table[key] = value
                     else:
-                        # (c)
+                        # (b)
                         # If [A -> α .] is in I_i, then set ACTION[i, a] to "reduce A -> α" for all
                         # a in FOLLOW(A); here A may not be S'.
                         for a in self._grammar.follow(item.A):
@@ -288,6 +300,7 @@ class SLRParsingTable:
 
     def setup(self):
         self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+        self._states.sort()
 
         self.start_state = self._find_state_with_item(
             Grammar.LR0Item(
@@ -318,7 +331,64 @@ class SLRParsingTable:
 
 
 class CanonicalLRParsingTable(SLRParsingTable):
-    pass
+    def __init__(self, grammar):
+        assert isinstance(grammar, Grammar.LR1Grammar)
+        super().__init__(grammar)
+
+    def setup_action(self):
+        for state in self._states:
+            # Let's determine the output transitions:
+            for item in state:
+                assert isinstance(item, Grammar.LR1Item)
+                if item.dot_position == len(item.production):
+                    # Only if we are in the set that contains the starting symbol with the production
+                    # where the dot is all the way on the right.
+                    if item.A == self._grammar.start_symbol and isinstance(item.lookahead, Tokens.EndToken):
+                        # (c)
+                        # If [S' -> S, $] is in I_i, then set ACTION[i, $] to "accept."
+                        key = (state.ID, Tokens.EndToken)
+                        value = (LRAction.ACCEPT, None)
+                        assert not (key in self._action_table and self._action_table[key] != value), \
+                            'Grammar is not LR(1), conflicting actions exist.'
+                        self._action_table[key] = value
+                    else:
+                        # (b)
+                        # If [A -> α .] is in I_i, A != S' then set ACTION[i, a] to "reduce A -> α"
+                        key = (state.ID, type(item.lookahead.token))
+                        value = (LRAction.REDUCE, item)
+                        assert not (key in self._action_table and self._action_table[key] != value), \
+                            'Grammar is not LR(1), conflicting actions exist.'
+                        self._action_table[key] = value
+                else:
+                    a = item.production[item.dot_position]
+
+                    if isinstance(a, Grammar.Terminal):
+                        # (a)
+                        # If [A -> α . a β, b] is in I_i and GOTO(I_i, a) = I_j, then set ACTION[i, a] to
+                        # "shift j ." Here a must be a terminal.
+                        if I_j := self._grammar.goto(state.I(), a):
+                            if j := self.find_state(self._states, I_j):
+                                key = (state.ID, type(a.token))
+                                value = (LRAction.SHIFT, j.ID)
+                                assert not (key in self._action_table and self._action_table[key] != value), \
+                                    'Grammar is not LR(1), conflicting actions exist.'
+
+                                self._action_table[key] = value
+
+    def setup(self):
+        self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+        self._states.sort()
+        print(self._states)
+
+        self.start_state = self._find_state_with_item(
+            Grammar.LR1Item(
+                A=self._grammar.start_symbol,
+                production=self._grammar.productions[self._grammar.start_symbol][0],
+                dot_position=0,
+                lookahead=Grammar.Terminal._end))
+
+        self.setup_goto()
+        self.setup_action()
 
 
 class SLR1Parser(Parser):
@@ -393,19 +463,31 @@ class SLR1Parser(Parser):
 
 
 class CanonicalLR1Parser(SLR1Parser):
-    pass
+    def _prepare_internals(self):
+        if not isinstance(self._grammar, Grammar.LR1Grammar):
+            self._grammar = Grammar.LR1Grammar(
+                terminals=self._grammar.terminals,
+                nonterminals=self._grammar.nonterminals,
+                productions=self._grammar.productions,
+                start_symbol=self._grammar.start_symbol,
+                prev_start_symbol=self._grammar._prev_start_symbol)
+        self._parsing_table = CanonicalLRParsingTable(self._grammar)
 
 
 def do_stuff():
     # grammar = Grammar.TextbookGrammar('4.28')
-    grammar = Grammar.TextbookGrammar('4.40_2')
-    grammar.augment()
+    # grammar = Grammar.TextbookGrammar('4.40_2')
+    grammar = Grammar.TextbookGrammar('4.55')
     # parser = LL1Parser(grammar)
-    parser = SLR1Parser(grammar)
+    # parser = SLR1Parser(grammar)
+    parser = CanonicalLR1Parser(grammar)
     lexer = LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer()
     tokens = lexer.process(
+        # """
+        # a + b * c
+        # """
         """
-        a * b + c
+        c 0 c 0
         """
     )
     list_tokens = list(tokens)

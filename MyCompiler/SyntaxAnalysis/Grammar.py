@@ -97,6 +97,12 @@ class LR0Item:
             return hash(self) == hash(other)
         return NotImplemented
 
+    def __lt__(self, other):
+        if isinstance(other, LR0Item):
+            return self._key() < other._key()
+        return NotImplemented
+
+
 
 class LR1Item(LR0Item):
     def __init__(self, A, production, dot_position, lookahead):
@@ -114,11 +120,11 @@ class LR1Item(LR0Item):
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
-        return (self.A, self.production, self.dot_position)
+        return (self.A, self.production, self.dot_position, self.lookahead)
 
 
 class Grammar:
-    def __init__(self, terminals, nonterminals, productions, start_symbol):
+    def __init__(self, terminals, nonterminals, productions, start_symbol, prev_start_symbol=None):
         assert isinstance(terminals, set)
         assert isinstance(nonterminals, set)
         assert isinstance(productions, dict)
@@ -132,8 +138,7 @@ class Grammar:
         self._closure_cache = dict()
         self._goto_cache = dict()
         self._items_cache = None
-        self._is_augmented = False
-        self._prev_start_symbol = None
+        self._prev_start_symbol = prev_start_symbol
         self._suffix_gen = self._suffix_gen_func()
 
     def __str__(self):
@@ -210,11 +215,14 @@ class Grammar:
         for nonterminal, production_list in self.productions.items():
             productions = [copy.copy(production) for production in production_list]
             new_productions[nonterminal] = productions
-        return Grammar(
+        new_grammar = self.__class__(
             terminals=new_terminals,
             nonterminals=new_nonterminals,
             productions=new_productions,
-            start_symbol=new_start_symbol)
+            start_symbol=new_start_symbol,
+            prev_start_symbol=self._prev_start_symbol)
+        new_grammar._prev_start_symbol = self._prev_start_symbol
+        return new_grammar
 
     @staticmethod
     def from_string(grammar_as_string, action_dict=None):
@@ -410,7 +418,7 @@ class Grammar:
         if isinstance(symbol_string, Terminal) or isinstance(symbol_string, Nonterminal):
             return self._first_cache[symbol_string]
 
-        if tuple(symbol_string) in self._first_cache:
+        if symbol_string in self._first_cache:
             return self._first_cache[tuple(symbol_string)]
 
         first = set()
@@ -618,7 +626,7 @@ class Grammar:
         return C
 
     def augment(self):
-        if self._is_augmented:
+        if self._prev_start_symbol is not None:
             return
         old_start = self.start_symbol
         new_start = old_start.derive_from(self._suffix_gen)
@@ -631,7 +639,6 @@ class Grammar:
 
 
 class LR1Grammar(Grammar):
-
     def closure(self, I):
         if frozenset(I) in self._closure_cache:
             return self._closure_cache[frozenset(I)]
@@ -664,9 +671,10 @@ class LR1Grammar(Grammar):
                 alpha = production[:item.dot_position]
                 B = production[item.dot_position]
                 beta = production[(item.dot_position + 1):]
+                a = item.lookahead
                 if isinstance(B, Nonterminal):
                     for gamma in self.productions[B]:
-                        for b in self.first(beta + [item.lookahead]):
+                        for b in self.first((*beta, a)):
                             closure.add(
                                 LR1Item(
                                 A=B,
@@ -721,8 +729,7 @@ class LR1Grammar(Grammar):
 
         self._items_cache = dict()
 
-        if not self._is_augmented:
-            self.augment()
+        self.augment()
 
         C = {frozenset(self.closure(
             {
@@ -730,7 +737,7 @@ class LR1Grammar(Grammar):
                     A=self.start_symbol,
                     production=(self._prev_start_symbol, ),
                     dot_position=0,
-                    lookahead=Tokens.EndToken())}))}
+                    lookahead=Terminal._end)}))}
 
 
         last_len = None
@@ -747,6 +754,10 @@ class LR1Grammar(Grammar):
 
         self._items_cache = C
         return C
+
+    def compute_all_first(self):
+        super().compute_all_first()
+        self._first_cache[Terminal._end] = {Terminal._end}
 
 
 class TextbookGrammar(Grammar):
@@ -838,6 +849,11 @@ class TextbookGrammar(Grammar):
             E -> E '+' T | T
             T -> T '*' F | F
             F -> '(' E ')' | 'id'
+            """
+        cls._grammar_str_dict['4.55'] = \
+            """
+            S -> C C
+            C -> 'id' C | 'num'
             """
         cls._grammar_str_dict['ANSI C'] = \
             """
