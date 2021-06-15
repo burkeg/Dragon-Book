@@ -209,7 +209,7 @@ class LRAction(Enum):
     ERROR = 4
 
 
-class LRParsingTable:
+class SLRParsingTable:
     def __init__(self, grammar):
         assert isinstance(grammar, Grammar.Grammar)
         self._grammar = grammar
@@ -317,7 +317,11 @@ class LRParsingTable:
         return self._states[goto]
 
 
-class LR1Parser(Parser):
+class CanonicalLRParsingTable(SLRParsingTable):
+    pass
+
+
+class SLR1Parser(Parser):
     def __init__(self, grammar):
         assert isinstance(grammar, Grammar.Grammar)
         super().__init__(grammar)
@@ -329,11 +333,10 @@ class LR1Parser(Parser):
         pass
 
     def _prepare_internals(self):
-        self._parsing_table = LRParsingTable(self._grammar)
-        # pp.pprint(self._grammar.items())
+        self._parsing_table = SLRParsingTable(self._grammar)
 
     def produce_derivation(self, w):
-        assert isinstance(self._parsing_table, LRParsingTable)
+        assert isinstance(self._parsing_table, SLRParsingTable)
         def to_input_string(tokens):
             for token in tokens:
                 yield Grammar.Terminal(token=token)
@@ -387,42 +390,31 @@ class LR1Parser(Parser):
                 children[-len(production):] = [parent_tree]
         assert len(children) == 1
         return children[0]
-        # A, production = next(derivation_iterator)
-        # curr_node = ParseTree(A)
-        # for i, child in enumerate(production):
-        #     child_to_add = None
-        #     if isinstance(child, Grammar.Terminal):
-        #         if isinstance(child.token, Tokens.EmptyToken):
-        #             child_to_add = ParseTree(Tokens.EmptyToken())
-        #         else:
-        #             child_to_add = ParseTree(next(derivation_iterator))
-        #     else:
-        #         child_to_add = self.to_parse_tree(derivation_iterator)
-        #     curr_node.children.append(child_to_add)
-        #
-        # return curr_node
+
+
+class CanonicalLR1Parser(SLR1Parser):
+    pass
 
 
 def do_stuff():
-    g = Grammar.TextbookGrammar('ANSI C')
-    g.augment()
-    lr1 = LR1Parser(g)
+    # grammar = Grammar.TextbookGrammar('4.28')
+    grammar = Grammar.TextbookGrammar('4.40_2')
+    grammar.augment()
+    # parser = LL1Parser(grammar)
+    parser = SLR1Parser(grammar)
     lexer = LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer()
     tokens = lexer.process(
         """
-        int main()
-        {
-        
-        }
+        a * b + c
         """
     )
     list_tokens = list(tokens)
-    pp.pprint(list_tokens)
-    productions = lr1.produce_derivation(iter(list_tokens))
+    # pp.pprint(list_tokens)
+    productions = parser.produce_derivation(iter(list_tokens))
     list_productions = list(productions)
-    pp.pprint(list_productions)
-    tree = lr1.to_parse_tree(iter(list_productions))
-    pp.pprint(tree)
+    # pp.pprint(list_productions)
+    tree = parser.to_parse_tree(iter(list_productions))
+    print(tree)
 
 
     # g = Grammar.TextbookGrammar('4.40_2')

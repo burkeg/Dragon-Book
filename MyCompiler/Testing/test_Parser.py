@@ -26,7 +26,7 @@ class Test(TestCase):
                 # ),
                 (
                     Grammar.TextbookGrammar('4.40_2'),
-                    Parser.LR1Parser,
+                    Parser.SLR1Parser,
                     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """
@@ -48,7 +48,7 @@ class Test(TestCase):
                 ),
                 (
                     Grammar.TextbookGrammar('4.40'),
-                    Parser.LR1Parser,
+                    Parser.SLR1Parser,
                     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """

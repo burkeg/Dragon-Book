@@ -83,7 +83,7 @@ class LR0Item:
         for term in self.production:
             production_strs.append(repr(term))
         production_strs.insert(self.dot_position, '.')
-        return ret_str + ' '.join(production_strs)
+        return f"LR0Item({ret_str + ' '.join(production_strs)})"
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
@@ -96,6 +96,25 @@ class LR0Item:
         if isinstance(other, LR0Item):
             return hash(self) == hash(other)
         return NotImplemented
+
+
+class LR1Item(LR0Item):
+    def __init__(self, A, production, dot_position, lookahead):
+        super().__init__(A, production, dot_position)
+        assert isinstance(lookahead, Terminal)
+        self.lookahead = lookahead
+
+    def __repr__(self):
+        ret_str = f'{repr(self.A)} -> '
+        production_strs = []
+        for term in self.production:
+            production_strs.append(repr(term))
+        production_strs.insert(self.dot_position, '.')
+        return f"LR1Item({ret_str + ' '.join(production_strs)}, {self.lookahead})"
+
+    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def _key(self):
+        return (self.A, self.production, self.dot_position)
 
 
 class Grammar:
@@ -499,7 +518,6 @@ class Grammar:
         if len(I) == 0:
             self._closure_cache[frozenset(I)] = I
             return I
-        assert isinstance(next(iter(I)), LR0Item)
 
         # Initially, add every item in I to CLOSURE(I)
         closure = copy.copy(I)
@@ -568,6 +586,37 @@ class Grammar:
         self._goto_cache[(frozenset(I), X)] = retval
         return retval
 
+    def items(self):
+        if self._items_cache is not None:
+            return self._items_cache
+
+        self._items_cache = dict()
+
+        self.augment()
+
+        C = {frozenset(self.closure(
+            {
+                LR0Item(
+                    A=self.start_symbol,
+                    production=(self._prev_start_symbol, ),
+                    dot_position=0)}))}
+
+
+        last_len = None
+
+        while last_len != len(C):
+            last_len = len(C)
+
+            for I in copy.copy(C):
+                assert isinstance(I, frozenset)
+                for X in self.terminals.union(self.nonterminals):
+                    goto = self.goto(I, X)
+                    if len(goto) > 0:
+                        C.add(frozenset(goto))
+
+        self._items_cache = C
+        return C
+
     def augment(self):
         if self._is_augmented:
             return
@@ -580,6 +629,92 @@ class Grammar:
         self._prev_start_symbol = old_start
         self.start_symbol = new_start
 
+
+class LR1Grammar(Grammar):
+
+    def closure(self, I):
+        if frozenset(I) in self._closure_cache:
+            return self._closure_cache[frozenset(I)]
+
+        self.augment()
+
+        assert isinstance(I, set)
+        if len(I) == 0:
+            self._closure_cache[frozenset(I)] = I
+            return I
+
+        # Initially, add every item in I to CLOSURE(I)
+        closure = copy.copy(I)
+        last_len = None
+
+        # If A -> α . B β is in CLOSURE(I) and B -> γ is a production, then add the
+        # item B -> . γ to CLOSURE(I), if it is not already there. Apply this rule
+        # until no more new items can be added to CLOSURE(I).
+        while last_len != len(closure):
+            last_len = len(closure)
+
+            for item in copy.copy(closure):
+                assert isinstance(item, LR1Item)
+                A = item.A
+                production = item.production
+                if item.dot_position >= len(production):
+                    # This means the dot is to the right of the final symbol
+                    continue
+
+                alpha = production[:item.dot_position]
+                B = production[item.dot_position]
+                beta = production[(item.dot_position + 1):]
+                if isinstance(B, Nonterminal):
+                    for gamma in self.productions[B]:
+                        for b in self.first(beta + [item.lookahead]):
+                            closure.add(
+                                LR1Item(
+                                A=B,
+                                production=gamma,
+                                dot_position=0,
+                                lookahead=b))
+
+        self._closure_cache[frozenset(I)] = closure
+        return closure
+
+    def goto(self, I, X):
+        # Returns the closure of the set of all items [A -> α X . β] such that [A -> α . X β] is in I.
+
+        if (frozenset(I), X) in self._goto_cache:
+            return self._goto_cache[(frozenset(I), X)]
+
+        self.augment()
+
+        goto = set()
+        last_len = None
+
+        while last_len != len(goto):
+            last_len = len(goto)
+
+            for item in I:
+                assert isinstance(item, LR1Item)
+                A = item.A
+                production = item.production
+                if item.dot_position >= len(production):
+                    # This means the dot is to the right of the final symbol
+                    continue
+
+                alpha = production[:item.dot_position]
+                potential_X = production[item.dot_position]
+                beta = production[(item.dot_position + 1):]
+
+                if potential_X == X:
+                    goto.add(
+                        LR1Item(
+                        A=A,
+                        production=item.production,
+                        dot_position=item.dot_position + 1,
+                        lookahead=item.lookahead))
+
+        retval = self.closure(goto)
+        self._goto_cache[(frozenset(I), X)] = retval
+        return retval
+
     def items(self):
         if self._items_cache is not None:
             return self._items_cache
@@ -591,10 +726,11 @@ class Grammar:
 
         C = {frozenset(self.closure(
             {
-                LR0Item(
+                LR1Item(
                     A=self.start_symbol,
                     production=(self._prev_start_symbol, ),
-                    dot_position=0)}))}
+                    dot_position=0,
+                    lookahead=Tokens.EndToken())}))}
 
 
         last_len = None
