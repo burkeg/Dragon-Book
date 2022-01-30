@@ -193,24 +193,17 @@ class LRState(Automata.DFAState):
         return NotImplemented
 
     def __repr__(self):
-        return f'LRState({repr(sorted(self._lr_set))}'
+        return f'LRState({repr(self._lr_set)}, ID={self.ID})'
 
     def __contains__(self, key):
-        return key in self._lr_set
+        return key in self._lr_set.get_items()
 
     def __iter__(self):
-        return iter(sorted(self._lr_set))
+        return iter(self._lr_set.get_items())
 
     def __lt__(self, other):
         if isinstance(other, LRState):
-            if len(self._key()) == len(other._key()):
-                for A, B in zip(sorted(self._lr_set), sorted(other._lr_set)):
-                    if A == B:
-                        continue
-                    return A < B
-                return False # We made it all the way through the loop and all elements were equal
-            else:
-                return len(self._key()) < len(other._key())
+            return self._lr_set < other._lr_set
         return NotImplemented
 
 
@@ -244,7 +237,7 @@ class SLRParsingTable:
         target_state = LRState(I)
         for state in states:
             if state == target_state:
-                print(f'I:{I}, target_state:{target_state}, found_state:{state}')
+                # print(f'I:{I}, target_state:{target_state}, found_state:{state}')
                 return state
         else:
             return None
@@ -345,7 +338,7 @@ class CanonicalLRParsingTable(SLRParsingTable):
                 if item.dot_position == len(item.production):
                     # Only if we are in the set that contains the starting symbol with the production
                     # where the dot is all the way on the right.
-                    if item.A == self._grammar.start_symbol and isinstance(item.lookahead, Tokens.EndToken):
+                    if item.A == self._grammar.start_symbol and isinstance(item.lookahead.token, Tokens.EndToken):
                         # (c)
                         # If [S' -> S, $] is in I_i, then set ACTION[i, $] to "accept."
                         key = (state.ID, Tokens.EndToken)
@@ -379,8 +372,7 @@ class CanonicalLRParsingTable(SLRParsingTable):
 
     def setup(self):
         self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
-        self._states.sort()
-        print(self._states)
+        # print(self._states)
 
         self.start_state = self._find_state_with_item(
             Grammar.LR1Item(
@@ -498,7 +490,7 @@ def do_stuff():
     list_productions = list(productions)
     # pp.pprint(list_productions)
     tree = parser.to_parse_tree(iter(list_productions))
-    print(tree)
+    # print(tree)
 
 
     # g = Grammar.TextbookGrammar('4.40_2')

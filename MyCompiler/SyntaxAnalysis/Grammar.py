@@ -127,19 +127,15 @@ class LRItemGroup:
         assert isinstance(LRItems, set)
         for item in LRItems:
             assert isinstance(item, LR0Item)
-        self.items = tuple(sorted(LRItems))
-        self.index = 0
+        self.items = sorted(LRItems)
 
-    def __iter__(self):
-        return self
+    def add(self, item):
+        assert isinstance(item, LR0Item)
+        if item not in self.items:
+            self.items = sorted(self.items + [item])
 
-    def __next__(self):
-        try:
-            result = self.items[self.index]
-        except IndexError:
-            raise StopIteration
-        self.index += 1
-        return result
+    def get_items(self):
+        return tuple(self.items)
 
     def __len__(self):
         return len(self.items)
@@ -148,14 +144,31 @@ class LRItemGroup:
         item_strs = []
         for term in self.items:
             item_strs.append(repr(term))
-        return f"LRItemGroup({' '.join(item_strs)})"
+        return f"LRItemGroup([{','.join(item_strs)}])"
 
     def __hash__(self):
         return hash(self._key())
 
+    def __eq__(self, other):
+        if isinstance(other, LRItemGroup):
+            return hash(self) == hash(other)
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, LRItemGroup):
+            if len(self._key()) == len(other._key()):
+                for A, B in zip(self.get_items(), other.get_items()):
+                    if A == B:
+                        continue
+                    return A < B
+                return False # We made it all the way through the loop and all elements were equal
+            else:
+                return len(self._key()) < len(other._key())
+        return NotImplemented
+
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
-        return self.items
+        return self.get_items()
 
 
 class Grammar:
@@ -695,7 +708,7 @@ class LR1Grammar(Grammar):
         while last_len != len(closure):
             last_len = len(closure)
 
-            for item in copy.copy(closure):
+            for item in closure.get_items():
                 assert isinstance(item, LR1Item)
                 A = item.A
                 production = item.production
@@ -717,7 +730,7 @@ class LR1Grammar(Grammar):
                                 dot_position=0,
                                 lookahead=b))
 
-        self._closure_cache[frozenset(I)] = closure
+        self._closure_cache[I] = closure
         return closure
 
     def goto(self, I, X):
@@ -728,34 +741,31 @@ class LR1Grammar(Grammar):
 
         self.augment()
 
-        goto = set()
+        goto = LRItemGroup(set())
         last_len = None
 
-        while last_len != len(goto):
-            last_len = len(goto)
+        for item in I.get_items():
+            assert isinstance(item, LR1Item)
+            A = item.A
+            production = item.production
+            if item.dot_position >= len(production):
+                # This means the dot is to the right of the final symbol
+                continue
 
-            for item in I:
-                assert isinstance(item, LR1Item)
-                A = item.A
-                production = item.production
-                if item.dot_position >= len(production):
-                    # This means the dot is to the right of the final symbol
-                    continue
+            alpha = production[:item.dot_position]
+            potential_X = production[item.dot_position]
+            beta = production[(item.dot_position + 1):]
 
-                alpha = production[:item.dot_position]
-                potential_X = production[item.dot_position]
-                beta = production[(item.dot_position + 1):]
-
-                if potential_X == X:
-                    goto.add(
-                        LR1Item(
-                        A=A,
-                        production=item.production,
-                        dot_position=item.dot_position + 1,
-                        lookahead=item.lookahead))
+            if potential_X == X:
+                goto.add(
+                    LR1Item(
+                    A=A,
+                    production=item.production,
+                    dot_position=item.dot_position + 1,
+                    lookahead=item.lookahead))
 
         retval = self.closure(goto)
-        self._goto_cache[(frozenset(I), X)] = retval
+        self._goto_cache[(I, X)] = retval
         return retval
 
     def items(self):
@@ -776,7 +786,6 @@ class LR1Grammar(Grammar):
                             dot_position=0,
                             lookahead=Terminal._end)}))}
 
-
         last_len = None
 
         while last_len != len(C):
@@ -787,10 +796,10 @@ class LR1Grammar(Grammar):
                 for X in self.terminals.union(self.nonterminals):
                     goto = self.goto(I, X)
                     if len(goto) > 0:
-                        C.add(frozenset(goto))
+                        C.add(goto)
 
         self._items_cache = C
-        return C
+        return sorted(C)
 
     def compute_all_first(self):
         super().compute_all_first()
@@ -814,6 +823,9 @@ class TextbookGrammar(Grammar):
             grammar_copy.nonterminals,
             grammar_copy.productions,
             grammar_copy.start_symbol)
+
+    def __repr__(self):
+        return f'TextbookGrammar({self.name})'
 
     @classmethod
     def string_version(cls, name):

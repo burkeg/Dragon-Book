@@ -15,11 +15,9 @@ class Test(TestCase):
                 #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
                 #     [
                 #         """
-                #         int i;
-                #         """,
-                #         """
                 #         int main()
                 #         {
+                #             return 0
                 #         }
                 #         """,
                 #     ]
@@ -74,7 +72,19 @@ class Test(TestCase):
                     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """
-                        c c 1 c 1
+                        1 1
+                        """,
+                        """
+                        c 1 1
+                        """,
+                        """
+                        c c c 1 1
+                        """,
+                        """
+                        c 1 c c c 1
+                        """,
+                        """
+                        1 c 1
                         """,
                     ]
                 ),
@@ -83,14 +93,10 @@ class Test(TestCase):
         for grammar, parser_type, lexer, test_cases in test_data:
             grammar.augment()
             parser = parser_type(grammar)
-            print(parser._parsing_table._action_table)
-            print(parser._parsing_table._goto_table)
             for test_case in test_cases:
-                with self.subTest(parser=parser_type, lexer=type(lexer), test_case=test_case):
+                with self.subTest(grammar=grammar, parser=parser_type, lexer=type(lexer), test_case=test_case):
                     tokens = lexer.process(test_case)
                     list_tokens = list(tokens)
-                    # print(list_tokens)
-                    productions = list(parser.produce_derivation(iter(list_tokens)))
-                    # print(productions)
+                    productions = parser.produce_derivation(iter(list_tokens))
                     tree = parser.to_parse_tree(productions)
-                    # print(tree)
+                    print(tree)
