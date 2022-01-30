@@ -244,6 +244,7 @@ class SLRParsingTable:
         target_state = LRState(I)
         for state in states:
             if state == target_state:
+                print(f'I:{I}, target_state:{target_state}, found_state:{state}')
                 return state
         else:
             return None
@@ -251,7 +252,8 @@ class SLRParsingTable:
     def setup_goto(self):
         for i in self._states:
             assert isinstance(i, LRState)
-            for A in self._grammar.nonterminals:
+            sorted_nonterminals = sorted(self._grammar.nonterminals)
+            for A in sorted_nonterminals:
                 if I_j := self._grammar.goto(i.I(), A):
                     if j := self.find_state(self._states, I_j):
                         self._goto_table[(i.ID, A)] = j.ID
@@ -386,7 +388,7 @@ class CanonicalLRParsingTable(SLRParsingTable):
                 production=self._grammar.productions[self._grammar.start_symbol][0],
                 dot_position=0,
                 lookahead=Grammar.Terminal._end))
-
+        # print(self.start_state)
         self.setup_goto()
         self.setup_action()
 

@@ -87,7 +87,7 @@ class LR0Item:
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
-        return (self.A, self.production, self.dot_position)
+        return self.A, self.production, self.dot_position
 
     def __hash__(self):
         return hash(self._key())
@@ -101,7 +101,6 @@ class LR0Item:
         if isinstance(other, LR0Item):
             return self._key() < other._key()
         return NotImplemented
-
 
 
 class LR1Item(LR0Item):
@@ -120,7 +119,43 @@ class LR1Item(LR0Item):
 
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
-        return (self.A, self.production, self.dot_position, self.lookahead)
+        return self.A, self.production, self.dot_position, self.lookahead
+
+
+class LRItemGroup:
+    def __init__(self, LRItems):
+        assert isinstance(LRItems, set)
+        for item in LRItems:
+            assert isinstance(item, LR0Item)
+        self.items = tuple(sorted(LRItems))
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            result = self.items[self.index]
+        except IndexError:
+            raise StopIteration
+        self.index += 1
+        return result
+
+    def __len__(self):
+        return len(self.items)
+
+    def __repr__(self):
+        item_strs = []
+        for term in self.items:
+            item_strs.append(repr(term))
+        return f"LRItemGroup({' '.join(item_strs)})"
+
+    def __hash__(self):
+        return hash(self._key())
+
+    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def _key(self):
+        return self.items
 
 
 class Grammar:
@@ -640,14 +675,14 @@ class Grammar:
 
 class LR1Grammar(Grammar):
     def closure(self, I):
-        if frozenset(I) in self._closure_cache:
-            return self._closure_cache[frozenset(I)]
+        assert isinstance(I, LRItemGroup)
+        if I in self._closure_cache:
+            return self._closure_cache[I]
 
         self.augment()
 
-        assert isinstance(I, set)
         if len(I) == 0:
-            self._closure_cache[frozenset(I)] = I
+            self._closure_cache[I] = I
             return I
 
         # Initially, add every item in I to CLOSURE(I)
@@ -687,9 +722,9 @@ class LR1Grammar(Grammar):
 
     def goto(self, I, X):
         # Returns the closure of the set of all items [A -> α X . β] such that [A -> α . X β] is in I.
-
-        if (frozenset(I), X) in self._goto_cache:
-            return self._goto_cache[(frozenset(I), X)]
+        assert isinstance(I, LRItemGroup)
+        if (I, X) in self._goto_cache:
+            return self._goto_cache[(I, X)]
 
         self.augment()
 
@@ -731,13 +766,15 @@ class LR1Grammar(Grammar):
 
         self.augment()
 
-        C = {frozenset(self.closure(
-            {
-                LR1Item(
-                    A=self.start_symbol,
-                    production=(self._prev_start_symbol, ),
-                    dot_position=0,
-                    lookahead=Terminal._end)}))}
+        C = {
+            self.closure(
+                LRItemGroup(
+                    {
+                        LR1Item(
+                            A=self.start_symbol,
+                            production=(self._prev_start_symbol, ),
+                            dot_position=0,
+                            lookahead=Terminal._end)}))}
 
 
         last_len = None
@@ -746,7 +783,7 @@ class LR1Grammar(Grammar):
             last_len = len(C)
 
             for I in copy.copy(C):
-                assert isinstance(I, frozenset)
+                assert isinstance(I, LRItemGroup)
                 for X in self.terminals.union(self.nonterminals):
                     goto = self.goto(I, X)
                     if len(goto) > 0:
