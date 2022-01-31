@@ -22,50 +22,50 @@ class Test(TestCase):
                 #         """,
                 #     ]
                 # ),
-                # (
-                #     Grammar.TextbookGrammar('4.40_2'),
-                #     Parser.SLR1Parser,
-                #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
-                #     [
-                #         """
-                #         a * b + c
-                #         """,
-                #         """
-                #         a
-                #         """,
-                #         """
-                #         (ab)
-                #         """,
-                #         """
-                #         a*b*c
-                #         """,
-                #         """
-                #         a+b*c
-                #         """,
-                #     ]
-                # ),
-                # (
-                #     Grammar.TextbookGrammar('4.40'),
-                #     Parser.SLR1Parser,
-                #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
-                #     [
-                #         """
-                #         a * b + c
-                #         """,
-                #         """
-                #         a
-                #         """,
-                #         """
-                #         (ab)
-                #         """,
-                #         """
-                #         a*b*c
-                #         """,
-                #         """
-                #         a+b*c
-                #         """,
-                #     ]
-                # ),
+                (
+                    Grammar.TextbookGrammar('4.40_2'),
+                    Parser.SLR1Parser,
+                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    [
+                        """
+                        a * b + c
+                        """,
+                        """
+                        a
+                        """,
+                        """
+                        (ab)
+                        """,
+                        """
+                        a*b*c
+                        """,
+                        """
+                        a+b*c
+                        """,
+                    ]
+                ),
+                (
+                    Grammar.TextbookGrammar('4.40'),
+                    Parser.SLR1Parser,
+                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    [
+                        """
+                        a * b + c
+                        """,
+                        """
+                        a
+                        """,
+                        """
+                        (ab)
+                        """,
+                        """
+                        a*b*c
+                        """,
+                        """
+                        a+b*c
+                        """,
+                    ]
+                ),
                 (
                     Grammar.TextbookGrammar('4.55'),
                     Parser.CanonicalLR1Parser,

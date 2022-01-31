@@ -567,12 +567,12 @@ class Grammar:
                                 changed = True
 
     def closure(self, I):
-        if frozenset(I) in self._closure_cache:
-            return self._closure_cache[frozenset(I)]
+        assert isinstance(I, LRItemGroup)
+        if I in self._closure_cache:
+            return self._closure_cache[I]
 
-        assert isinstance(I, set)
         if len(I) == 0:
-            self._closure_cache[frozenset(I)] = I
+            self._closure_cache[I] = I
             return I
 
         # Initially, add every item in I to CLOSURE(I)
@@ -585,7 +585,7 @@ class Grammar:
         while last_len != len(closure):
             last_len = len(closure)
 
-            for item in copy.copy(closure):
+            for item in closure.get_items():
                 assert isinstance(item, LR0Item)
                 A = item.A
                 production = item.production
@@ -604,22 +604,22 @@ class Grammar:
                             production=gamma,
                             dot_position=0))
 
-        self._closure_cache[frozenset(I)] = closure
+        self._closure_cache[I] = closure
         return closure
 
     def goto(self, I, X):
         # Returns the closure of the set of all items [A -> α X . β] such that [A -> α . X β] is in I.
+        assert isinstance(I, LRItemGroup)
+        if (I, X) in self._goto_cache:
+            return self._goto_cache[(I, X)]
 
-        if (frozenset(I), X) in self._goto_cache:
-            return self._goto_cache[(frozenset(I), X)]
-
-        goto = set()
+        goto = LRItemGroup(set())
         last_len = None
 
         while last_len != len(goto):
             last_len = len(goto)
 
-            for item in I:
+            for item in I.get_items():
                 assert isinstance(item, LR0Item)
                 A = item.A
                 production = item.production
@@ -639,7 +639,7 @@ class Grammar:
                         dot_position=item.dot_position + 1))
 
         retval = self.closure(goto)
-        self._goto_cache[(frozenset(I), X)] = retval
+        self._goto_cache[(I, X)] = retval
         return retval
 
     def items(self):
@@ -650,12 +650,10 @@ class Grammar:
 
         self.augment()
 
-        C = {frozenset(self.closure(
-            {
-                LR0Item(
-                    A=self.start_symbol,
-                    production=(self._prev_start_symbol, ),
-                    dot_position=0)}))}
+        C = {self.closure(LRItemGroup({LR0Item(
+            A=self.start_symbol,
+            production=(self._prev_start_symbol, ),
+            dot_position=0)}))}
 
 
         last_len = None
@@ -664,11 +662,11 @@ class Grammar:
             last_len = len(C)
 
             for I in copy.copy(C):
-                assert isinstance(I, frozenset)
+                assert isinstance(I, LRItemGroup)
                 for X in self.terminals.union(self.nonterminals):
                     goto = self.goto(I, X)
                     if len(goto) > 0:
-                        C.add(frozenset(goto))
+                        C.add(goto)
 
         self._items_cache = C
         return C

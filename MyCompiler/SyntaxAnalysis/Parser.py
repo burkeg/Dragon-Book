@@ -174,6 +174,7 @@ class LL1Parser(Parser):
 
 class LRState(Automata.DFAState):
     def __init__(self, lr_set, ID=-1):
+        assert isinstance(lr_set, Grammar.LRItemGroup)
         super().__init__(name=repr(lr_set), ID=ID)
         self._lr_set = lr_set
 
@@ -295,7 +296,6 @@ class SLRParsingTable:
 
     def setup(self):
         self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
-        self._states.sort()
 
         self.start_state = self._find_state_with_item(
             Grammar.LR0Item(
