@@ -170,6 +170,11 @@ class LRItemGroup:
     def _key(self):
         return self.get_items()
 
+    def union(self, other):
+        assert isinstance(other, LRItemGroup)
+        return LRItemGroup(set(other.get_items()).union(set(self.get_items())))
+
+
 
 class Grammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol, prev_start_symbol=None):
@@ -804,17 +809,22 @@ class LR1Grammar(Grammar):
         self._first_cache[Terminal._end] = {Terminal._end}
 
 
+class LALRGrammar(LR1Grammar):
+    pass
+
+
 class TextbookGrammar(Grammar):
     _grammar_dict = dict()
 
     def __init__(self, name):
+        self.name = name
         if len(self._grammar_dict) == 0:
             self._init_grammar_dict()
-        self.name = name
-        if name not in self._grammar_dict:
+        if name in self._grammar_dict:
+            grammar = self._grammar_dict[name]
+        else:
             raise Exception('Unknown textbook grammar')
-        self.string_version = self._grammar_dict[name]
-        grammar_copy = copy.copy(self.string_version)
+        grammar_copy = copy.copy(grammar)
         super().__init__(
             grammar_copy.terminals,
             grammar_copy.nonterminals,

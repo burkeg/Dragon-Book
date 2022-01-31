@@ -2,6 +2,7 @@ import copy
 from itertools import combinations, tee
 import pprint as pp
 from enum import Enum
+from functools import reduce
 
 import Automata
 import Grammar
@@ -181,6 +182,10 @@ class LRState(Automata.DFAState):
     def I(self):
         return self._lr_set
 
+    def get_core_hash(self):
+        # By looking at each LR1 item as an LR0 item we can hash on each item to find shared cores
+        return hash(tuple(sorted({hash(Grammar.LR0Item._key(item)) for item in self})))
+
     # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
     def _key(self):
         return self._lr_set
@@ -206,6 +211,34 @@ class LRState(Automata.DFAState):
         if isinstance(other, LRState):
             return self._lr_set < other._lr_set
         return NotImplemented
+
+    def union(self, other):
+        assert isinstance(other, LRState)
+        return MultiLRState(self).union(other)
+
+
+class MultiLRState(LRState):
+    def __init__(self, lrstate):
+        assert isinstance(lrstate, LRState)
+        super().__init__(lr_set=lrstate._lr_set, ID=lrstate.ID)
+        self.sub_states = [lrstate]
+
+    def __repr__(self):
+        return 'Multi' + super().__repr__()
+
+    def union(self, other):
+        assert isinstance(other, LRState)
+        new_multi_lr_state = MultiLRState(LRState(self.sub_states[0]._lr_set, self.sub_states[0].ID))
+        new_multi_lr_state.sub_states.extend(self.sub_states[1:])
+
+        new_multi_lr_state._lr_set = self._lr_set.union(other._lr_set)
+        new_multi_lr_state.ID = f'{self.ID}{other.ID}'
+        if isinstance(other, MultiLRState):
+            new_multi_lr_state.sub_states.extend(other.sub_states)
+        else:
+            new_multi_lr_state.sub_states.append(other)
+        return new_multi_lr_state
+
 
 
 class LRAction(Enum):
@@ -295,13 +328,9 @@ class SLRParsingTable:
                                 self._action_table[key] = value
 
     def setup(self):
-        self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+        self._states = self.get_states()
 
-        self.start_state = self._find_state_with_item(
-            Grammar.LR0Item(
-                A=self._grammar.start_symbol,
-                production=self._grammar.productions[self._grammar.start_symbol][0],
-                dot_position=0))
+        self.start_state = self.get_start_state()
 
         self.setup_goto()
         self.setup_action()
@@ -324,6 +353,15 @@ class SLRParsingTable:
         goto = self._goto_table[(t.ID, A)]
         return self._states[goto]
 
+    def get_states(self):
+        return [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+
+    def get_start_state(self):
+        return self._find_state_with_item(
+            Grammar.LR0Item(
+                A=self._grammar.start_symbol,
+                production=self._grammar.productions[self._grammar.start_symbol][0],
+                dot_position=0))
 
 class CanonicalLRParsingTable(SLRParsingTable):
     def __init__(self, grammar):
@@ -370,19 +408,13 @@ class CanonicalLRParsingTable(SLRParsingTable):
 
                                 self._action_table[key] = value
 
-    def setup(self):
-        self._states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
-        # print(self._states)
-
-        self.start_state = self._find_state_with_item(
+    def get_start_state(self):
+        return self._find_state_with_item(
             Grammar.LR1Item(
                 A=self._grammar.start_symbol,
                 production=self._grammar.productions[self._grammar.start_symbol][0],
                 dot_position=0,
                 lookahead=Grammar.Terminal._end))
-        # print(self.start_state)
-        self.setup_goto()
-        self.setup_action()
 
 
 class SLR1Parser(Parser):
@@ -466,6 +498,55 @@ class CanonicalLR1Parser(SLR1Parser):
                 start_symbol=self._grammar.start_symbol,
                 prev_start_symbol=self._grammar._prev_start_symbol)
         self._parsing_table = CanonicalLRParsingTable(self._grammar)
+
+
+class SpaceConsumingLALRParser(CanonicalLR1Parser):
+    def _prepare_internals(self):
+        if not isinstance(self._grammar, Grammar.LALRGrammar):
+            self._grammar = Grammar.LALRGrammar(
+                terminals=self._grammar.terminals,
+                nonterminals=self._grammar.nonterminals,
+                productions=self._grammar.productions,
+                start_symbol=self._grammar.start_symbol,
+                prev_start_symbol=self._grammar._prev_start_symbol)
+        self._parsing_table = SpaceConsumingLALRParsingTable(self._grammar)
+
+
+class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
+    def __init__(self, grammar):
+        assert isinstance(grammar, Grammar.LALRGrammar)
+        super().__init__(grammar)
+
+    def get_states(self):
+        # Construct C = {I0, I1, ..., In}, the collection of sets of LR(1) items.
+        C = super().get_states()
+
+        # For each core present among the set of LR(1) items, find all sets having
+        # that core, and replace these sets by their union.
+        # Let Cp = {J0, J1, ..., Jn} be the resulting sets of LR(1) items.
+        Cp = self.join_cores(C)
+        return Cp
+
+    def setup_action(self):
+        # The parsing actions for state i are constructed from Ji in the same manner as
+        # in Algorithm 4.56. If there is a parsing action conflict, the algorithm fails
+        # to produce a parser, and the grammar is said not to be LALR(1).
+        super().setup_action()
+
+    def setup_goto(self):
+        super().setup_goto()
+        old_goto_table = self._goto_table
+        print()
+
+    def join_cores(self, C):
+        core_dict = dict()
+        for I in C:
+            assert isinstance(I, LRState)
+            core_dict.setdefault(I.get_core_hash(), []).append(I)
+
+        # For any two I with the same core hash, combine them by taking their union.
+        Cp = [reduce(LRState.union, states) for states in core_dict.values()]
+        return Cp
 
 
 def do_stuff():
