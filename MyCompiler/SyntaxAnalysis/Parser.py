@@ -232,7 +232,7 @@ class MultiLRState(LRState):
         new_multi_lr_state.sub_states.extend(self.sub_states[1:])
 
         new_multi_lr_state._lr_set = self._lr_set.union(other._lr_set)
-        new_multi_lr_state.ID = f'{self.ID}{other.ID}'
+        new_multi_lr_state.ID = f'{self.ID},{other.ID}'
         if isinstance(other, MultiLRState):
             new_multi_lr_state.sub_states.extend(other.sub_states)
         else:
@@ -252,7 +252,7 @@ class SLRParsingTable:
     def __init__(self, grammar):
         assert isinstance(grammar, Grammar.Grammar)
         self._grammar = grammar
-        self._states = []
+        self._states = None
         self._action_table = dict()
         self._goto_table = dict()
         self.start_state = None
@@ -327,11 +327,15 @@ class SLRParsingTable:
 
                                 self._action_table[key] = value
 
+    def preprocess(self):
+        pass
+
     def setup(self):
         self._states = self.get_states()
 
-        self.start_state = self.get_start_state()
 
+        self.start_state = self.get_start_state()
+        self.preprocess()
         self.setup_goto()
         self.setup_action()
 
@@ -354,7 +358,19 @@ class SLRParsingTable:
         return self._states[goto]
 
     def get_states(self):
-        return [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+        if self._states is not None:
+            return self._states
+        states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+
+        # # Force the ordering to match figure 4.41
+        # reorder = [9, 3, 7, 8, 5, 2, 6, 1, 4, 0]
+        # states = [states[new_pos] for new_pos in reorder]
+        # for i, item in enumerate(states):
+        #     item.ID = i
+        return states
+
+        # states = [LRState(I, ID) for ID, I in enumerate(self._grammar.items())]
+        # return states
 
     def get_start_state(self):
         return self._find_state_with_item(
@@ -514,10 +530,11 @@ class SpaceConsumingLALRParser(CanonicalLR1Parser):
 
 class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
     def __init__(self, grammar):
+        self.id_to_core_group_ids = dict()
         assert isinstance(grammar, Grammar.LALRGrammar)
         super().__init__(grammar)
 
-    def get_states(self):
+    def get_core_states(self):
         # Construct C = {I0, I1, ..., In}, the collection of sets of LR(1) items.
         C = super().get_states()
 
@@ -527,16 +544,49 @@ class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
         Cp = self.join_cores(C)
         return Cp
 
+    def preprocess(self):
+        Cp = self.get_core_states()
+        # Cp groups are states with the same core
+        # Let's invert the mapping to make a dictionary from original state ID to a group
+        for core_group in Cp:
+            for item_id in core_group:
+                self.id_to_core_group_ids[item_id] = core_group
+
     def setup_action(self):
         # The parsing actions for state i are constructed from Ji in the same manner as
         # in Algorithm 4.56. If there is a parsing action conflict, the algorithm fails
         # to produce a parser, and the grammar is said not to be LALR(1).
         super().setup_action()
+        old_action_table = self._action_table
+        self._action_table = dict()
+
+        for (start_state, terminal_to_act_on), target_state in old_action_table.items():
+            start_core = self.id_to_core_group_ids[start_state]
+            target_core = self.id_to_core_group_ids[target_state]
+            self._action_table[(start_core, terminal_to_act_on)] = target_core
+
+        return
 
     def setup_goto(self):
         super().setup_goto()
         old_goto_table = self._goto_table
-        print()
+        self._goto_table = dict()
+
+
+        # The GOTO table is constructed as follows. If J is the union of one or
+        # more sets of LR(1) items, that is, J = I1 ∪ I2 ∪ ... ∪ Ik , then the
+        # cores of GOTO(I1, X), GOTO(I2, X), ..., GOTO(Ik, X) are the same, since
+        # I1, I2, ..., Ik all have the same core. Let K be the union of all sets of
+        # items having the same core as GOTO(I1, X). Then GOTO(J, X) = K.
+
+        # for (I_k, X), GOTO(I_k, X) in GOTO of LR(1) items
+        for (start_state, nonterminal_to_move_on), target_state in old_goto_table.items():
+            start_core = self.id_to_core_group_ids[start_state]
+            target_core = self.id_to_core_group_ids[target_state]
+            self._goto_table[(start_core, nonterminal_to_move_on)] = target_core
+
+        return
+
 
     def join_cores(self, C):
         core_dict = dict()
@@ -545,7 +595,8 @@ class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
             core_dict.setdefault(I.get_core_hash(), []).append(I)
 
         # For any two I with the same core hash, combine them by taking their union.
-        Cp = [reduce(LRState.union, states) for states in core_dict.values()]
+        # Cp = [reduce(LRState.union, states) for states in core_dict.values()]
+        Cp = [tuple(sorted([state.ID for state in states])) for states in core_dict.values()]
         return Cp
 
 
