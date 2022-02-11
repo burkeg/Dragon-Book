@@ -22,72 +22,72 @@ class Test(TestCase):
                 #         """,
                 #     ]
                 # ),
-                # (
-                #     Grammar.TextbookGrammar('4.40_2'),
-                #     Parser.SLR1Parser,
-                #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
-                #     [
-                #         """
-                #         a * b + c
-                #         """,
-                #         """
-                #         a
-                #         """,
-                #         """
-                #         (ab)
-                #         """,
-                #         """
-                #         a*b*c
-                #         """,
-                #         """
-                #         a+b*c
-                #         """,
-                #     ]
-                # ),
-                # (
-                #     Grammar.TextbookGrammar('4.40'),
-                #     Parser.SLR1Parser,
-                #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
-                #     [
-                #         """
-                #         a * b + c
-                #         """,
-                #         """
-                #         a
-                #         """,
-                #         """
-                #         (ab)
-                #         """,
-                #         """
-                #         a*b*c
-                #         """,
-                #         """
-                #         a+b*c
-                #         """,
-                #     ]
-                # ),
-                # (
-                #     Grammar.TextbookGrammar('4.55'),
-                #     Parser.CanonicalLR1Parser,
-                #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
-                #     [
-                #         """
-                #         1 1
-                #         """,
-                #         """
-                #         c 1 1
-                #         """,
-                #         """
-                #         c c c 1 1
-                #         """,
-                #         """
-                #         c 1 c c c 1
-                #         """,
-                #         """
-                #         1 c 1
-                #         """,
-                #     ]
-                # ),
+                (
+                    Grammar.TextbookGrammar('4.40_2'),
+                    Parser.SLR1Parser,
+                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    [
+                        """
+                        a * b + c
+                        """,
+                        """
+                        a
+                        """,
+                        """
+                        (ab)
+                        """,
+                        """
+                        a*b*c
+                        """,
+                        """
+                        a+b*c
+                        """,
+                    ]
+                ),
+                (
+                    Grammar.TextbookGrammar('4.40'),
+                    Parser.SLR1Parser,
+                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    [
+                        """
+                        a * b + c
+                        """,
+                        """
+                        a
+                        """,
+                        """
+                        (ab)
+                        """,
+                        """
+                        a*b*c
+                        """,
+                        """
+                        a+b*c
+                        """,
+                    ]
+                ),
+                (
+                    Grammar.TextbookGrammar('4.55'),
+                    Parser.CanonicalLR1Parser,
+                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    [
+                        """
+                        1 1
+                        """,
+                        """
+                        c 1 1
+                        """,
+                        """
+                        c c c 1 1
+                        """,
+                        """
+                        c 1 c c c 1
+                        """,
+                        """
+                        1 c 1
+                        """,
+                    ]
+                ),
                 (
                     Grammar.TextbookGrammar('4.55'),
                     Parser.SpaceConsumingLALRParser,
@@ -95,6 +95,18 @@ class Test(TestCase):
                     [
                         """
                         1 1
+                        """,
+                        """
+                        c 1 1
+                        """,
+                        """
+                        c c c 1 1
+                        """,
+                        """
+                        c 1 c c c 1
+                        """,
+                        """
+                        1 c 1
                         """,
                     ]
                 ),
@@ -104,7 +116,7 @@ class Test(TestCase):
             grammar.augment()
             parser = parser_type(grammar)
             for test_case in test_cases:
-                with self.subTest(grammar=grammar, parser=parser_type, lexer=type(lexer), test_case=test_case):
+                with self.subTest(grammar=grammar, parser=parser_type, lexer=type(lexer), test_case=test_case.strip()):
                     tokens = lexer.process(test_case)
                     list_tokens = list(tokens)
                     productions = parser.produce_derivation(iter(list_tokens))

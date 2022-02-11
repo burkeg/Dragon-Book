@@ -2,7 +2,7 @@ import copy
 from itertools import combinations, tee
 import pprint as pp
 from enum import Enum
-from functools import reduce
+from functools import reduce, lru_cache
 
 import Automata
 import Grammar
@@ -232,13 +232,19 @@ class MultiLRState(LRState):
         new_multi_lr_state.sub_states.extend(self.sub_states[1:])
 
         new_multi_lr_state._lr_set = self._lr_set.union(other._lr_set)
-        new_multi_lr_state.ID = f'{self.ID},{other.ID}'
+        new_multi_lr_state.ID = copy.deepcopy(self.as_list(self.ID))
+        new_multi_lr_state.ID.extend(self.as_list(other.ID))
+        new_multi_lr_state.ID = tuple(sorted(new_multi_lr_state.ID))
         if isinstance(other, MultiLRState):
             new_multi_lr_state.sub_states.extend(other.sub_states)
         else:
             new_multi_lr_state.sub_states.append(other)
         return new_multi_lr_state
 
+    @staticmethod
+    def as_list(id):
+        unsorted_ids = [id] if not isinstance(id, list) else id
+        return sorted(unsorted_ids)
 
 
 class LRAction(Enum):
@@ -296,7 +302,7 @@ class SLRParsingTable:
                     if item.A == self._grammar.start_symbol:
                         # (c)
                         # If [S' -> S] is in I_i, then set ACTION[i, $] to "accept."
-                        key = (state.ID, Tokens.EndToken)
+                        key = (self._get_state_ID(state), Tokens.EndToken)
                         value = (LRAction.ACCEPT, None)
                         assert key not in self._action_table or self._action_table[key] == value, \
                             'Grammar is not SLR(1), conflicting actions exist.'
@@ -306,7 +312,7 @@ class SLRParsingTable:
                         # If [A -> α .] is in I_i, then set ACTION[i, a] to "reduce A -> α" for all
                         # a in FOLLOW(A); here A may not be S'.
                         for a in self._grammar.follow(item.A):
-                            key = (state.ID, type(a.token))
+                            key = (self._get_state_ID(state), type(a.token))
                             value = (LRAction.REDUCE, item)
                             assert key not in self._action_table or self._action_table[key] == value, \
                                 'Grammar is not SLR(1), conflicting actions exist.'
@@ -320,12 +326,18 @@ class SLRParsingTable:
                         # "shift j ." Here a must be a terminal.
                         if I_j := self._grammar.goto(state.I(), a):
                             if j := self.find_state(self._states, I_j):
-                                key = (state.ID, type(a.token))
-                                value = (LRAction.SHIFT, j.ID)
+                                key = (self._get_state_ID(state), type(a.token))
+                                value = (LRAction.SHIFT, self._get_state_ID(j))
                                 assert key not in self._action_table or self._action_table[key] == value, \
                                     'Grammar is not SLR(1), conflicting actions exist.'
 
                                 self._action_table[key] = value
+
+    def _get_state_ID(self, state):
+        return state.ID
+
+    def _get_state_from_ID(self, ID):
+        return self._states[ID]
 
     def preprocess(self):
         pass
@@ -342,20 +354,20 @@ class SLRParsingTable:
     def action(self, s, a):
         assert isinstance(s, LRState)
         assert isinstance(a, Grammar.Terminal)
-        key = (s.ID, type(a.token))
+        key = (self._get_state_ID(s), type(a.token))
         if key not in self._action_table:
             return LRAction.ERROR, None
         action, data = self._action_table[key]
         if action == LRAction.SHIFT:
-            return action, self._states[data]
+            return action, self._get_state_from_ID(data)
         else:
             return action, data
 
     def goto(self, t, A):
         assert isinstance(t, LRState)
         assert isinstance(A, Grammar.Nonterminal)
-        goto = self._goto_table[(t.ID, A)]
-        return self._states[goto]
+        goto = self._goto_table[(self._get_state_ID(t), A)]
+        return self._get_state_from_ID(goto)
 
     def get_states(self):
         if self._states is not None:
@@ -395,7 +407,7 @@ class CanonicalLRParsingTable(SLRParsingTable):
                     if item.A == self._grammar.start_symbol and isinstance(item.lookahead.token, Tokens.EndToken):
                         # (c)
                         # If [S' -> S, $] is in I_i, then set ACTION[i, $] to "accept."
-                        key = (state.ID, Tokens.EndToken)
+                        key = (self._get_state_ID(state), Tokens.EndToken)
                         value = (LRAction.ACCEPT, None)
                         assert not (key in self._action_table and self._action_table[key] != value), \
                             'Grammar is not LR(1), conflicting actions exist.'
@@ -403,7 +415,7 @@ class CanonicalLRParsingTable(SLRParsingTable):
                     else:
                         # (b)
                         # If [A -> α .] is in I_i, A != S' then set ACTION[i, a] to "reduce A -> α"
-                        key = (state.ID, type(item.lookahead.token))
+                        key = (self._get_state_ID(state), type(item.lookahead.token))
                         value = (LRAction.REDUCE, item)
                         assert not (key in self._action_table and self._action_table[key] != value), \
                             'Grammar is not LR(1), conflicting actions exist.'
@@ -417,8 +429,8 @@ class CanonicalLRParsingTable(SLRParsingTable):
                         # "shift j ." Here a must be a terminal.
                         if I_j := self._grammar.goto(state.I(), a):
                             if j := self.find_state(self._states, I_j):
-                                key = (state.ID, type(a.token))
-                                value = (LRAction.SHIFT, j.ID)
+                                key = (self._get_state_ID(state), type(a.token))
+                                value = (LRAction.SHIFT, self._get_state_ID(j))
                                 assert not (key in self._action_table and self._action_table[key] != value), \
                                     'Grammar is not LR(1), conflicting actions exist.'
 
@@ -530,7 +542,7 @@ class SpaceConsumingLALRParser(CanonicalLR1Parser):
 
 class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
     def __init__(self, grammar):
-        self.id_to_core_group_ids = dict()
+        self._id_to_core_group_ids = dict()
         assert isinstance(grammar, Grammar.LALRGrammar)
         super().__init__(grammar)
 
@@ -550,22 +562,28 @@ class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
         # Let's invert the mapping to make a dictionary from original state ID to a group
         for core_group in Cp:
             for item_id in core_group:
-                self.id_to_core_group_ids[item_id] = core_group
+                self._id_to_core_group_ids[item_id] = core_group
 
     def setup_action(self):
         # The parsing actions for state i are constructed from Ji in the same manner as
         # in Algorithm 4.56. If there is a parsing action conflict, the algorithm fails
         # to produce a parser, and the grammar is said not to be LALR(1).
         super().setup_action()
-        old_action_table = self._action_table
-        self._action_table = dict()
+        # To accomplish this, I am overriding _get_state_ID to produce a tuple of the merged state IDs
 
-        for (start_state, terminal_to_act_on), target_state in old_action_table.items():
-            start_core = self.id_to_core_group_ids[start_state]
-            target_core = self.id_to_core_group_ids[target_state]
-            self._action_table[(start_core, terminal_to_act_on)] = target_core
+    @lru_cache(maxsize=100)
+    def _get_state_ID(self, state):
+        if not isinstance(state.ID, int):
+            return super()._get_state_ID(state)
+        else:
+            return self._id_to_core_group_ids[state.ID]
 
-        return
+    @lru_cache(maxsize=100)
+    def _get_state_from_ID(self, ID):
+        if isinstance(ID, int):
+            return super()._get_state_from_ID(ID)
+        compound_ID = ID
+        return reduce(LRState.union, [self._states[id] for id in compound_ID])
 
     def setup_goto(self):
         super().setup_goto()
@@ -581,8 +599,8 @@ class SpaceConsumingLALRParsingTable(CanonicalLRParsingTable):
 
         # for (I_k, X), GOTO(I_k, X) in GOTO of LR(1) items
         for (start_state, nonterminal_to_move_on), target_state in old_goto_table.items():
-            start_core = self.id_to_core_group_ids[start_state]
-            target_core = self.id_to_core_group_ids[target_state]
+            start_core = self._id_to_core_group_ids[start_state]
+            target_core = self._id_to_core_group_ids[target_state]
             self._goto_table[(start_core, nonterminal_to_move_on)] = target_core
 
         return
