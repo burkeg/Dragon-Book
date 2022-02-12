@@ -162,7 +162,7 @@ class BaseGrammar:
                     current_rule = []
                     rest_of_line = m.group(1).strip()
                 else:
-                    raise Exception('Expected a nonterminal, terminal or | before "' + rest_of_line + '"')
+                    raise Exception('Expected a nonterminal, terminal or | before "' + str(rest_of_line) + '"')
 
             productions.setdefault(current_nonterminal, []).append(tuple(current_rule))
         nonterminals = set(productions.keys())

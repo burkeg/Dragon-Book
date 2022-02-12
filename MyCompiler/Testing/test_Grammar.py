@@ -184,15 +184,15 @@ class TestGrammar(TestCase):
         ]
 
         for grammar, test_cases in grammars:
-                if isinstance(grammar, BaseGrammar):
-                    g = grammar
-                else:
-                    g = BaseGrammar.from_string(grammar)
-                for find_start, expected_string in test_cases:
-                    with self.subTest(start_of=find_start, expected=expected_string):
-                        actual = g.first(find_start)
-                        expected = set([Terminal(str_version) for str_version in expected_string])
-                        assert actual == expected
+            if isinstance(grammar, BaseGrammar):
+                g = grammar
+            else:
+                g = BaseGrammar.from_string(grammar)
+            for find_start, expected_string in test_cases:
+                with self.subTest(start_of=find_start, expected=expected_string):
+                    actual = g.first(find_start)
+                    expected = set([Terminal(str_version) for str_version in expected_string])
+                    assert actual == expected
 
     def test_follow(self):
         grammars = [
@@ -290,15 +290,15 @@ class TestGrammar(TestCase):
         ]
 
         for grammar, test_cases in grammars:
-                if isinstance(grammar, BaseGrammar):
-                    g = grammar
-                else:
-                    g = BaseGrammar.from_string(grammar)
-                for find_follow, expected_string in test_cases:
-                    with self.subTest(follow_of=find_follow, expected=expected_string):
-                        actual = g.follow(find_follow)
-                        expected = set([Terminal(str_version) for str_version in expected_string])
-                        if not(actual == expected):
-                            assert False
+            if isinstance(grammar, BaseGrammar):
+                g = grammar
+            else:
+                g = BaseGrammar.from_string(grammar)
+            for find_follow, expected_string in test_cases:
+                with self.subTest(follow_of=find_follow, expected=expected_string):
+                    actual = g.follow(find_follow)
+                    expected = set([Terminal(str_version) for str_version in expected_string])
+                    if not(actual == expected):
+                        assert False
 
 
