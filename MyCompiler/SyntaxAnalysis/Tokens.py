@@ -1,8 +1,7 @@
-import Enums
-import SymbolTable
+from Enums import Operation
 
 
-class Token:
+class BaseToken:
     def __init__(self, lexeme, value=None, symbol_table_entry=None):
         self.lexeme = lexeme
         assert isinstance(lexeme, str)
@@ -15,7 +14,7 @@ class Token:
 
     @classmethod
     def lex_action(cls, symbol_table, lexeme):
-        assert isinstance(symbol_table, SymbolTable.SymbolTable)
+        # assert isinstance(symbol_table, SymbolTable)
         assert isinstance(lexeme, str)
         new_token = cls.create(lexeme)
         symbol_table.create_symbol(new_token)
@@ -38,11 +37,11 @@ class Token:
             if token := subclass.create(lexeme):
                 return token
         # last resort, make a generic token with that lexeme
-        return Token(lexeme)
+        return BaseToken(lexeme)
         # raise Exception('Not a valid lexeme for this token')
 
 
-class IDToken(Token):
+class IDToken(BaseToken):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
@@ -51,7 +50,7 @@ class IDToken(Token):
         return IDToken(lexeme)
 
 
-class StringLiteralToken(Token):
+class StringLiteralToken(BaseToken):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
@@ -60,7 +59,7 @@ class StringLiteralToken(Token):
         return StringLiteralToken(lexeme)
 
 
-class NumToken(Token):
+class NumToken(BaseToken):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
@@ -69,22 +68,22 @@ class NumToken(Token):
         return NumToken(lexeme)
 
 
-class RelationalOperatorToken(Token):
+class RelationalOperatorToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == '==':
-            value = Enums.Operation.EQUALS
+            value = Operation.EQUALS
         elif lexeme == '!=':
-            value = Enums.Operation.NOT_EQUALS
+            value = Operation.NOT_EQUALS
         elif lexeme == '<':
-            value = Enums.Operation.LT
+            value = Operation.LT
         elif lexeme == '<=':
-            value = Enums.Operation.LTE
+            value = Operation.LTE
         elif lexeme == '>':
-            value = Enums.Operation.GT
+            value = Operation.GT
         elif lexeme == '>=':
-            value = Enums.Operation.GTE
-        assert isinstance(value, Enums.Operation), 'Unknown relational operator'
+            value = Operation.GTE
+        assert isinstance(value, Operation), 'Unknown relational operator'
         super().__init__(lexeme, value)
 
     @classmethod
@@ -135,18 +134,18 @@ class GTEToken(RelationalOperatorToken):
         super().__init__('>=')
 
 
-class ArithmeticOperatorToken(Token):
+class ArithmeticOperatorToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == '+':
-            value = Enums.Operation.PLUS
+            value = Operation.PLUS
         elif lexeme == '-':
-            value = Enums.Operation.MINUS
+            value = Operation.MINUS
         elif lexeme == '*':
-            value = Enums.Operation.MULTIPLY
+            value = Operation.MULTIPLY
         elif lexeme == '/':
-            value = Enums.Operation.DIVIDE
-        assert isinstance(value, Enums.Operation), 'Unknown arithmetic operator'
+            value = Operation.DIVIDE
+        assert isinstance(value, Operation), 'Unknown arithmetic operator'
         super().__init__(lexeme, value)
 
     @classmethod
@@ -178,14 +177,14 @@ class DivideToken(ArithmeticOperatorToken):
         super().__init__('/')
 
 
-class LogicOperatorToken(Token):
+class LogicOperatorToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == '&&':
-            value = Enums.Operation.LOGIC_AND
+            value = Operation.LOGIC_AND
         elif lexeme == '||':
-            value = Enums.Operation.LOGIC_OR
-        assert isinstance(value, Enums.Operation), 'Unknown logical operator'
+            value = Operation.LOGIC_OR
+        assert isinstance(value, Operation), 'Unknown logical operator'
         super().__init__(lexeme, value)
 
     @classmethod
@@ -208,16 +207,16 @@ class LogicOrToken(LogicOperatorToken):
         super().__init__('||')
 
 
-class BitwiseOperatorToken(Token):
+class BitwiseOperatorToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == '&':
-            value = Enums.Operation.BIT_AND
+            value = Operation.BIT_AND
         elif lexeme == '|':
-            value = Enums.Operation.BIT_OR
+            value = Operation.BIT_OR
         elif lexeme == '^':
-            value = Enums.Operation.BIT_XOR
-        assert isinstance(value, Enums.Operation), 'Unknown bitwise operator'
+            value = Operation.BIT_XOR
+        assert isinstance(value, Operation), 'Unknown bitwise operator'
         super().__init__(lexeme, value)
 
     @classmethod
@@ -247,20 +246,20 @@ class BitwiseXorToken(BitwiseOperatorToken):
         super().__init__('^')
 
 
-class AssignmentOperatorToken(Token):
+class AssignmentOperatorToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == '=':
-            value = Enums.Operation.ASSIGN
+            value = Operation.ASSIGN
         elif lexeme == '+=':
-            value = Enums.Operation.PLUS_EQUAL
+            value = Operation.PLUS_EQUAL
         elif lexeme == '-=':
-            value = Enums.Operation.MINUS_EQUAL
+            value = Operation.MINUS_EQUAL
         elif lexeme == '*=':
-            value = Enums.Operation.TIMES_EQUAL
+            value = Operation.TIMES_EQUAL
         elif lexeme == '/=':
-            value = Enums.Operation.DIVIDE_EQUAL
-        assert isinstance(value, Enums.Operation), 'Unknown assignment operator'
+            value = Operation.DIVIDE_EQUAL
+        assert isinstance(value, Operation), 'Unknown assignment operator'
         super().__init__(lexeme, value)
 
     @classmethod
@@ -304,22 +303,22 @@ class DivideEqualsToken(AssignmentOperatorToken):
         super().__init__('/=')
 
 
-class BracketToken(Token):
+class BracketToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == '(':
-            value = Enums.Operation.LEFT_PAREN
+            value = Operation.LEFT_PAREN
         elif lexeme == ')':
-            value = Enums.Operation.RIGHT_PAREN
+            value = Operation.RIGHT_PAREN
         elif lexeme == '[':
-            value = Enums.Operation.LEFT_BRACKET
+            value = Operation.LEFT_BRACKET
         elif lexeme == ']':
-            value = Enums.Operation.RIGHT_BRACKET
+            value = Operation.RIGHT_BRACKET
         elif lexeme == '{':
-            value = Enums.Operation.LEFT_CURLY
+            value = Operation.LEFT_CURLY
         elif lexeme == '}':
-            value = Enums.Operation.RIGHT_CURLY
-        assert isinstance(value, Enums.Operation), 'Unknown bracket'
+            value = Operation.RIGHT_CURLY
+        assert isinstance(value, Operation), 'Unknown bracket'
         super().__init__(lexeme)
 
     @classmethod
@@ -370,7 +369,7 @@ class RCurlyToken(BracketToken):
         super().__init__('}')
 
 
-class EndStatementToken(Token):
+class EndStatementToken(BaseToken):
     def __init__(self):
         super().__init__(';')
 
@@ -382,7 +381,7 @@ class EndStatementToken(Token):
             return None
 
 
-class ColonToken(Token):
+class ColonToken(BaseToken):
     def __init__(self):
         super().__init__(':')
 
@@ -394,7 +393,7 @@ class ColonToken(Token):
             return None
 
 
-class KeywordToken(Token):
+class KeywordToken(BaseToken):
     def __init__(self, lexeme):
         super().__init__(lexeme)
 
@@ -427,14 +426,14 @@ class WhileToken(KeywordToken):
         super().__init__(lexeme='while')
 
 
-class QuoteToken(Token):
+class QuoteToken(BaseToken):
     def __init__(self, lexeme):
         value = None
         if lexeme == "'":
-            value = Enums.Operation.SINGLE_QUOTE
+            value = Operation.SINGLE_QUOTE
         elif lexeme == '"':
-            value = Enums.Operation.DOUBLE_QUOTE
-        assert isinstance(value, Enums.Operation), 'Unknown quote'
+            value = Operation.DOUBLE_QUOTE
+        assert isinstance(value, Operation), 'Unknown quote'
         super().__init__(lexeme)
 
     @classmethod
@@ -457,13 +456,13 @@ class DoubleQuoteToken(QuoteToken):
         super().__init__('"')
 
 
-class ActionToken(Token):
+class ActionToken(BaseToken):
     def __init__(self, name, action=None):
         self.name = name
         super().__init__('', value=action)
 
 
-class EmptyToken(Token):
+class EmptyToken(BaseToken):
     def __init__(self):
         super().__init__('ε')
 
@@ -475,7 +474,7 @@ class EmptyToken(Token):
             return None
 
 
-class EndToken(Token):
+class EndToken(BaseToken):
     def __init__(self):
         super().__init__('$')
 
@@ -487,7 +486,7 @@ class EndToken(Token):
             return None
 
 
-class AutoToken(Token):
+class AutoToken(BaseToken):
     def __init__(self):
         super().__init__('auto')
 
@@ -499,7 +498,7 @@ class AutoToken(Token):
             return None
 
 
-class BreakToken(Token):
+class BreakToken(BaseToken):
     def __init__(self):
         super().__init__('break')
 
@@ -511,7 +510,7 @@ class BreakToken(Token):
             return None
 
 
-class CaseToken(Token):
+class CaseToken(BaseToken):
     def __init__(self):
         super().__init__('case')
 
@@ -523,7 +522,7 @@ class CaseToken(Token):
             return None
 
 
-class CharToken(Token):
+class CharToken(BaseToken):
     def __init__(self):
         super().__init__('char')
 
@@ -535,7 +534,7 @@ class CharToken(Token):
             return None
 
 
-class ConstToken(Token):
+class ConstToken(BaseToken):
     def __init__(self):
         super().__init__('const')
 
@@ -547,7 +546,7 @@ class ConstToken(Token):
             return None
 
 
-class ContinueToken(Token):
+class ContinueToken(BaseToken):
     def __init__(self):
         super().__init__('continue')
 
@@ -559,7 +558,7 @@ class ContinueToken(Token):
             return None
 
 
-class DefaultToken(Token):
+class DefaultToken(BaseToken):
     def __init__(self):
         super().__init__('default')
 
@@ -571,7 +570,7 @@ class DefaultToken(Token):
             return None
 
 
-class DoToken(Token):
+class DoToken(BaseToken):
     def __init__(self):
         super().__init__('do')
 
@@ -583,7 +582,7 @@ class DoToken(Token):
             return None
 
 
-class DoubleToken(Token):
+class DoubleToken(BaseToken):
     def __init__(self):
         super().__init__('double')
 
@@ -595,7 +594,7 @@ class DoubleToken(Token):
             return None
 
 
-class EnumToken(Token):
+class EnumToken(BaseToken):
     def __init__(self):
         super().__init__('enum')
 
@@ -607,7 +606,7 @@ class EnumToken(Token):
             return None
 
 
-class ExternToken(Token):
+class ExternToken(BaseToken):
     def __init__(self):
         super().__init__('extern')
 
@@ -619,7 +618,7 @@ class ExternToken(Token):
             return None
 
 
-class FloatToken(Token):
+class FloatToken(BaseToken):
     def __init__(self):
         super().__init__('float')
 
@@ -631,7 +630,7 @@ class FloatToken(Token):
             return None
 
 
-class ForToken(Token):
+class ForToken(BaseToken):
     def __init__(self):
         super().__init__('for')
 
@@ -643,7 +642,7 @@ class ForToken(Token):
             return None
 
 
-class GotoToken(Token):
+class GotoToken(BaseToken):
     def __init__(self):
         super().__init__('goto')
 
@@ -655,7 +654,7 @@ class GotoToken(Token):
             return None
 
 
-class IntToken(Token):
+class IntToken(BaseToken):
     def __init__(self):
         super().__init__('int')
 
@@ -667,7 +666,7 @@ class IntToken(Token):
             return None
 
 
-class LongToken(Token):
+class LongToken(BaseToken):
     def __init__(self):
         super().__init__('long')
 
@@ -679,7 +678,7 @@ class LongToken(Token):
             return None
 
 
-class RegisterToken(Token):
+class RegisterToken(BaseToken):
     def __init__(self):
         super().__init__('register')
 
@@ -691,7 +690,7 @@ class RegisterToken(Token):
             return None
 
 
-class ReturnToken(Token):
+class ReturnToken(BaseToken):
     def __init__(self):
         super().__init__('return')
 
@@ -703,7 +702,7 @@ class ReturnToken(Token):
             return None
 
 
-class ShortToken(Token):
+class ShortToken(BaseToken):
     def __init__(self):
         super().__init__('short')
 
@@ -715,7 +714,7 @@ class ShortToken(Token):
             return None
 
 
-class SignedToken(Token):
+class SignedToken(BaseToken):
     def __init__(self):
         super().__init__('signed')
 
@@ -727,7 +726,7 @@ class SignedToken(Token):
             return None
 
 
-class SizeofToken(Token):
+class SizeofToken(BaseToken):
     def __init__(self):
         super().__init__('sizeof')
 
@@ -739,7 +738,7 @@ class SizeofToken(Token):
             return None
 
 
-class StaticToken(Token):
+class StaticToken(BaseToken):
     def __init__(self):
         super().__init__('static')
 
@@ -751,7 +750,7 @@ class StaticToken(Token):
             return None
 
 
-class StructToken(Token):
+class StructToken(BaseToken):
     def __init__(self):
         super().__init__('struct')
 
@@ -763,7 +762,7 @@ class StructToken(Token):
             return None
 
 
-class SwitchToken(Token):
+class SwitchToken(BaseToken):
     def __init__(self):
         super().__init__('switch')
 
@@ -775,7 +774,7 @@ class SwitchToken(Token):
             return None
 
 
-class TypedefToken(Token):
+class TypedefToken(BaseToken):
     def __init__(self):
         super().__init__('typedef')
 
@@ -787,7 +786,7 @@ class TypedefToken(Token):
             return None
 
 
-class UnionToken(Token):
+class UnionToken(BaseToken):
     def __init__(self):
         super().__init__('union')
 
@@ -799,7 +798,7 @@ class UnionToken(Token):
             return None
 
 
-class UnsignedToken(Token):
+class UnsignedToken(BaseToken):
     def __init__(self):
         super().__init__('unsigned')
 
@@ -811,7 +810,7 @@ class UnsignedToken(Token):
             return None
 
 
-class VoidToken(Token):
+class VoidToken(BaseToken):
     def __init__(self):
         super().__init__('void')
 
@@ -823,7 +822,7 @@ class VoidToken(Token):
             return None
 
 
-class VolatileToken(Token):
+class VolatileToken(BaseToken):
     def __init__(self):
         super().__init__('volatile')
 
@@ -835,7 +834,7 @@ class VolatileToken(Token):
             return None
 
 
-class EllipsisToken(Token):
+class EllipsisToken(BaseToken):
     def __init__(self):
         super().__init__('...')
 
@@ -847,7 +846,7 @@ class EllipsisToken(Token):
             return None
 
 
-class RShiftEqualsToken(Token):
+class RShiftEqualsToken(BaseToken):
     def __init__(self):
         super().__init__('>>=')
 
@@ -859,7 +858,7 @@ class RShiftEqualsToken(Token):
             return None
 
 
-class LShiftEqualsToken(Token):
+class LShiftEqualsToken(BaseToken):
     def __init__(self):
         super().__init__('<<=')
 
@@ -871,7 +870,7 @@ class LShiftEqualsToken(Token):
             return None
 
 
-class ModEqualsToken(Token):
+class ModEqualsToken(BaseToken):
     def __init__(self):
         super().__init__('%=')
 
@@ -883,7 +882,7 @@ class ModEqualsToken(Token):
             return None
 
 
-class AndEqualsToken(Token):
+class AndEqualsToken(BaseToken):
     def __init__(self):
         super().__init__('&=')
 
@@ -895,7 +894,7 @@ class AndEqualsToken(Token):
             return None
 
 
-class XorEqualsToken(Token):
+class XorEqualsToken(BaseToken):
     def __init__(self):
         super().__init__('^=')
 
@@ -907,7 +906,7 @@ class XorEqualsToken(Token):
             return None
 
 
-class OrEqualsToken(Token):
+class OrEqualsToken(BaseToken):
     def __init__(self):
         super().__init__('|=')
 
@@ -919,7 +918,7 @@ class OrEqualsToken(Token):
             return None
 
 
-class RShiftToken(Token):
+class RShiftToken(BaseToken):
     def __init__(self):
         super().__init__('>>')
 
@@ -931,7 +930,7 @@ class RShiftToken(Token):
             return None
 
 
-class LShiftToken(Token):
+class LShiftToken(BaseToken):
     def __init__(self):
         super().__init__('<<')
 
@@ -943,7 +942,7 @@ class LShiftToken(Token):
             return None
 
 
-class IncrementToken(Token):
+class IncrementToken(BaseToken):
     def __init__(self):
         super().__init__('++')
 
@@ -955,7 +954,7 @@ class IncrementToken(Token):
             return None
 
 
-class DecrementToken(Token):
+class DecrementToken(BaseToken):
     def __init__(self):
         super().__init__('--')
 
@@ -967,7 +966,7 @@ class DecrementToken(Token):
             return None
 
 
-class ArrowToken(Token):
+class ArrowToken(BaseToken):
     def __init__(self):
         super().__init__('->')
 
@@ -979,7 +978,7 @@ class ArrowToken(Token):
             return None
 
 
-class CommaToken(Token):
+class CommaToken(BaseToken):
     def __init__(self):
         super().__init__(',')
 
@@ -991,7 +990,7 @@ class CommaToken(Token):
             return None
 
 
-class DotToken(Token):
+class DotToken(BaseToken):
     def __init__(self):
         super().__init__('.')
 
@@ -1003,7 +1002,7 @@ class DotToken(Token):
             return None
 
 
-class NotToken(Token):
+class NotToken(BaseToken):
     def __init__(self):
         super().__init__('!')
 
@@ -1015,7 +1014,7 @@ class NotToken(Token):
             return None
 
 
-class TildeToken(Token):
+class TildeToken(BaseToken):
     def __init__(self):
         super().__init__('~')
 
@@ -1027,7 +1026,7 @@ class TildeToken(Token):
             return None
 
 
-class AsterixToken(Token):
+class AsterixToken(BaseToken):
     def __init__(self):
         super().__init__('*')
 
@@ -1039,7 +1038,7 @@ class AsterixToken(Token):
             return None
 
 
-class PercentToken(Token):
+class PercentToken(BaseToken):
     def __init__(self):
         super().__init__('%')
 
@@ -1051,7 +1050,7 @@ class PercentToken(Token):
             return None
 
 
-class LAngleToken(Token):
+class LAngleToken(BaseToken):
     def __init__(self):
         super().__init__('<')
 
@@ -1063,7 +1062,7 @@ class LAngleToken(Token):
             return None
 
 
-class RAngleToken(Token):
+class RAngleToken(BaseToken):
     def __init__(self):
         super().__init__('>')
 
@@ -1075,7 +1074,7 @@ class RAngleToken(Token):
             return None
 
 
-class QuestionToken(Token):
+class QuestionToken(BaseToken):
     def __init__(self):
         super().__init__('?')
 
@@ -1088,7 +1087,7 @@ class QuestionToken(Token):
 
 
 def do_something():
-    print(Token.create('+='))
+    print(BaseToken.create('+='))
 
 
 if __name__ == '__main__':

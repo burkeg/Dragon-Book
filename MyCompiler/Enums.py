@@ -61,6 +61,9 @@ class SpecialCharacter(Enum):
     WORD = 11
     DIGIT = 12
     WHITESPACE = 13
+    NEGATED_WORD = 14
+    NEGATED_DIGIT = 15
+    NEGATED_WHITESPACE = 16
 
     def __str__(self):
             if self == SpecialCharacter.LEFT_PAREN:
@@ -147,3 +150,10 @@ class SpecialEscapedCharacter(Enum):
             return '\n'
         raise Exception('Hey dummy you forgot to add a string representation')
     __repr__ = __str__
+
+
+class LRAction(Enum):
+    SHIFT = 1
+    REDUCE = 2
+    ACCEPT = 3
+    ERROR = 4

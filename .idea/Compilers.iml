@@ -6,6 +6,17 @@
       <sourceFolder url="file://$MODULE_DIR$/MyCompiler/LexicalAnalysis" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/MyCompiler/Testing" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/LexicalAnalysis/FiniteStateAutomata" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/LexicalAnalysis/FiniteStateAutomata/Automatas" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/LexicalAnalysis/FiniteStateAutomata/Simulators" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/GrammarSymbols" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/Grammars" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/Parser" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/Parser/ParserStates" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/Parser/Parsers" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/Parser/ParsingTables" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/SyntaxAnalysis/ParserAutomataData" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/MyCompiler/Tokens" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (Dragon-Book)" jdkType="Python SDK" />

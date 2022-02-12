@@ -1,8 +1,10 @@
 from unittest import TestCase
 
-import AutomataAlgorithms
-import RegExpr
-import Automata
+from DFASimulator import DFASimulator
+from Elements import BaseElement
+from NFASimulator import NFASimulator
+from RegExpr import RegExpr
+
 
 class TestSimulator(TestCase):
     def test_simulate(self):
@@ -85,39 +87,39 @@ class TestSimulator(TestCase):
         with self.subTest(simulator='NFA'):
             with self.subTest(type='Positive'):
                 for regex, test in positive_tests.items():
-                    expr = RegExpr.RegExpr.from_string(regex)
+                    expr = RegExpr.from_string(regex)
                     nfa = expr.to_NFA()
-                    nfaSim = AutomataAlgorithms.NFASimulator(nfa)
+                    nfaSim = NFASimulator(nfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            assert nfaSim.simulate(Automata.Element.element_list_from_string(testcase))
+                            assert nfaSim.simulate(BaseElement.element_list_from_string(testcase))
 
             with self.subTest(type='Negative'):
                 for regex, test in negative_tests.items():
-                    expr = RegExpr.RegExpr.from_string(regex)
+                    expr = RegExpr.from_string(regex)
                     nfa = expr.to_NFA()
-                    nfaSim = AutomataAlgorithms.NFASimulator(nfa)
+                    nfaSim = NFASimulator(nfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            assert not nfaSim.simulate(Automata.Element.element_list_from_string(testcase))
+                            assert not nfaSim.simulate(BaseElement.element_list_from_string(testcase))
 
         with self.subTest(simulator='DFA'):
             with self.subTest(type='Positive'):
                 for regex, test in positive_tests.items():
-                    expr = RegExpr.RegExpr.from_string(regex)
+                    expr = RegExpr.from_string(regex)
                     nfa = expr.to_NFA()
                     dfa = nfa.to_DFA()
-                    dfaSim = AutomataAlgorithms.DFASimulator(dfa)
+                    dfaSim = DFASimulator(dfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            assert dfaSim.simulate(Automata.Element.element_list_from_string(testcase))
+                            assert dfaSim.simulate(BaseElement.element_list_from_string(testcase))
 
             with self.subTest(type='Negative'):
                 for regex, test in negative_tests.items():
-                    expr = RegExpr.RegExpr.from_string(regex)
+                    expr = RegExpr.from_string(regex)
                     nfa = expr.to_NFA()
                     dfa = nfa.to_DFA()
-                    dfaSim = AutomataAlgorithms.DFASimulator(dfa)
+                    dfaSim = DFASimulator(dfa)
                     for testcase in test:
                         with self.subTest(regex=regex, testcase=testcase):
-                            assert not dfaSim.simulate(Automata.Element.element_list_from_string(testcase))
+                            assert not dfaSim.simulate(BaseElement.element_list_from_string(testcase))

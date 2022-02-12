@@ -1,10 +1,15 @@
 from unittest import TestCase
 
 import RegExpr
-import Automata
 import SymbolTable
 import LexicalAnalyzer
-import Tokens
+from Tokens import IDToken, NumToken, RelationalOperatorToken, EqualsToken, NotEqualsToken, LTToken, LTEToken, \
+    GTToken, GTEToken, ArithmeticOperatorToken, PlusToken, MinusToken, AsterixToken, DivideToken, LogicOperatorToken, \
+    LogicAndToken, LogicOrToken, BitwiseOperatorToken, BitwiseAndToken, BitwiseOrToken, BitwiseXorToken, \
+    AssignmentOperatorToken, AssignToken, PlusEqualsToken, MinusEqualsToken, TimesEqualsToken, DivideEqualsToken, \
+    BracketToken, LParenToken, RParenToken, LBracketToken, RBracketToken, LCurlyToken, RCurlyToken, EndStatementToken, \
+    KeywordToken, IfToken, ElseToken, WhileToken, ColonToken
+from Elements import BaseElement
 
 
 class TestLexicalAnalyzer(TestCase):
@@ -28,8 +33,8 @@ class TestLexicalAnalyzer(TestCase):
         symbol_table_manager = SymbolTable.SymbolTableManager()
 
         translation_rules = [
-            (Automata.Element(reg_def['id']), Tokens.IDToken.lex_action),
-            (Automata.Element(reg_def['number']), Tokens.NumToken.lex_action)
+            (BaseElement(reg_def['id']), IDToken.lex_action),
+            (BaseElement(reg_def['number']), NumToken.lex_action)
         ]
         lexer = LexicalAnalyzer.LexicalAnalyzer(symbol_table_manager, reg_def, translation_rules)
         for case in test_cases:
@@ -43,47 +48,47 @@ class TestLexicalAnalyzer(TestCase):
                 assert len(tokens) == len(case.split())
 
     def test_default_lexer(self):
-        ID = Tokens.IDToken
-        Num = Tokens.NumToken
-        Relop = Tokens.RelationalOperatorToken
-        Eq = Tokens.EqualsToken
-        NotEq = Tokens.NotEqualsToken
-        LT = Tokens.LTToken
-        LTE = Tokens.LTEToken
-        GT = Tokens.GTToken
-        GTE = Tokens.GTEToken
-        Arith = Tokens.ArithmeticOperatorToken
-        Plus = Tokens.PlusToken
-        Minus = Tokens.MinusToken
-        Mult = Tokens.AsterixToken
-        Div = Tokens.DivideToken
-        Logic = Tokens.LogicOperatorToken
-        LAnd = Tokens.LogicAndToken
-        LOr = Tokens.LogicOrToken
-        Bit = Tokens.BitwiseOperatorToken
-        BAnd = Tokens.BitwiseAndToken
-        BOr = Tokens.BitwiseOrToken
-        BXor = Tokens.BitwiseXorToken
-        Assignment = Tokens.AssignmentOperatorToken
-        Assign = Tokens.AssignToken
-        PlusEq = Tokens.PlusEqualsToken
-        MinusEq = Tokens.MinusEqualsToken
-        TimesEq = Tokens.TimesEqualsToken
-        DivEq = Tokens.DivideEqualsToken
-        Bracket = Tokens.BracketToken
-        LParen = Tokens.LParenToken
-        RParen = Tokens.RParenToken
-        LBracket = Tokens.LBracketToken
-        RBracket = Tokens.RBracketToken
-        LCurly = Tokens.LCurlyToken
-        RCurly = Tokens.RCurlyToken
-        EndStatement = Tokens.EndStatementToken
-        EndStmt = Tokens.EndStatementToken
-        Keyword = Tokens.KeywordToken
-        If = Tokens.IfToken
-        Else = Tokens.ElseToken
-        While = Tokens.WhileToken
-        Colon = Tokens.ColonToken
+        ID = IDToken
+        Num = NumToken
+        Relop = RelationalOperatorToken
+        Eq = EqualsToken
+        NotEq = NotEqualsToken
+        LT = LTToken
+        LTE = LTEToken
+        GT = GTToken
+        GTE = GTEToken
+        Arith = ArithmeticOperatorToken
+        Plus = PlusToken
+        Minus = MinusToken
+        Mult = AsterixToken
+        Div = DivideToken
+        Logic = LogicOperatorToken
+        LAnd = LogicAndToken
+        LOr = LogicOrToken
+        Bit = BitwiseOperatorToken
+        BAnd = BitwiseAndToken
+        BOr = BitwiseOrToken
+        BXor = BitwiseXorToken
+        Assignment = AssignmentOperatorToken
+        Assign = AssignToken
+        PlusEq = PlusEqualsToken
+        MinusEq = MinusEqualsToken
+        TimesEq = TimesEqualsToken
+        DivEq = DivideEqualsToken
+        Bracket = BracketToken
+        LParen = LParenToken
+        RParen = RParenToken
+        LBracket = LBracketToken
+        RBracket = RBracketToken
+        LCurly = LCurlyToken
+        RCurly = RCurlyToken
+        EndStatement = EndStatementToken
+        EndStmt = EndStatementToken
+        Keyword = KeywordToken
+        If = IfToken
+        Else = ElseToken
+        While = WhileToken
+        Colon = ColonToken
         test_cases = {
             'aaa': [ID],
             'A': [ID],

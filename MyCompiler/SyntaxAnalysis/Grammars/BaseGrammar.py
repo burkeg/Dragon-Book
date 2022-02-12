@@ -1,182 +1,15 @@
 import copy
 import re
 import os
-
-import Tokens
-
-
-class GrammarSymbol:
-    def __init__(self, string):
-        self.string = string
-
-    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
-    def _key(self):
-        return self.string
-
-    def __hash__(self):
-        return hash(self._key())
-
-    def __eq__(self, other):
-        if isinstance(other, GrammarSymbol):
-            return self._key() == other._key()
-        return NotImplemented
-
-    def __repr__(self):
-        return repr(self.string)
-
-    def __lt__(self, other):
-        return self.string < other.string
+from Tokens import EmptyToken
+from Nonterminal import Nonterminal
+from Terminal import Terminal, epsilon_terminal
+from ActionTerminal import ActionTerminal
+from LRItemGroup import LRItemGroup
+from LR0Item import LR0Item
 
 
-class Terminal(GrammarSymbol):
-    _epsilon = None
-    _end = None
-    def __init__(self, string=None, token=None):
-        self.token = None
-        assert string is not None or token is not None
-        if token is not None and string is not None:
-            assert isinstance(token, Tokens.Token)
-            self.token = token
-            self.string = string
-        elif string is not None:
-            self.token = Tokens.Token.create(string)
-            self.string = f"'{self.token.lexeme}'"
-        elif token is not None:
-            self.token = token
-            self.string = f"'{self.token.lexeme}'"
-        else:
-            raise Exception('Not a valid terminal')
-        super().__init__(self.string)
-
-    def __str__(self):
-        return self.string
-
-    __repr__ = __str__
-
-
-Terminal._epsilon = Terminal(string='ε')
-Terminal._end = Terminal(string='$')
-
-
-class ActionTerminal(Terminal):
-    def __init__(self, action_name, action):
-        super().__init__(action_name, Tokens.ActionToken(action_name, action))
-
-
-class Nonterminal(GrammarSymbol):
-    def derive_from(self, suffix_gen):
-        return Nonterminal(f'{self.string}_{str(next(suffix_gen))}')
-
-
-class LR0Item:
-    def __init__(self, A, production, dot_position):
-        assert isinstance(A, Nonterminal)
-        assert isinstance(production, tuple)
-        assert isinstance(dot_position, int)
-        self.A = A
-        self.production = production
-        self.dot_position = dot_position
-
-    def __repr__(self):
-        ret_str = f'{repr(self.A)} -> '
-        production_strs = []
-        for term in self.production:
-            production_strs.append(repr(term))
-        production_strs.insert(self.dot_position, '.')
-        return f"LR0Item({ret_str + ' '.join(production_strs)})"
-
-    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
-    def _key(self):
-        return self.A, self.production, self.dot_position
-
-    def __hash__(self):
-        return hash(self._key())
-
-    def __eq__(self, other):
-        if isinstance(other, LR0Item):
-            return hash(self) == hash(other)
-        return NotImplemented
-
-    def __lt__(self, other):
-        if isinstance(other, LR0Item):
-            return self._key() < other._key()
-        return NotImplemented
-
-
-class LR1Item(LR0Item):
-    def __init__(self, A, production, dot_position, lookahead):
-        super().__init__(A, production, dot_position)
-        assert isinstance(lookahead, Terminal)
-        self.lookahead = lookahead
-
-    def __repr__(self):
-        ret_str = f'{repr(self.A)} -> '
-        production_strs = []
-        for term in self.production:
-            production_strs.append(repr(term))
-        production_strs.insert(self.dot_position, '.')
-        return f"LR1Item({ret_str + ' '.join(production_strs)}, {self.lookahead})"
-
-    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
-    def _key(self):
-        return self.A, self.production, self.dot_position, self.lookahead
-
-
-class LRItemGroup:
-    def __init__(self, LRItems):
-        assert isinstance(LRItems, set)
-        for item in LRItems:
-            assert isinstance(item, LR0Item)
-        self.items = sorted(LRItems)
-
-    def add(self, item):
-        assert isinstance(item, LR0Item)
-        if item not in self.items:
-            self.items = sorted(self.items + [item])
-
-    def get_items(self):
-        return tuple(self.items)
-
-    def __len__(self):
-        return len(self.items)
-
-    def __repr__(self):
-        item_strs = []
-        for term in self.items:
-            item_strs.append(repr(term))
-        return f"LRItemGroup([{','.join(item_strs)}])"
-
-    def __hash__(self):
-        return hash(self._key())
-
-    def __eq__(self, other):
-        if isinstance(other, LRItemGroup):
-            return hash(self) == hash(other)
-        return NotImplemented
-
-    def __lt__(self, other):
-        if isinstance(other, LRItemGroup):
-            if len(self._key()) == len(other._key()):
-                for A, B in zip(self.get_items(), other.get_items()):
-                    if A == B:
-                        continue
-                    return A < B
-                return False # We made it all the way through the loop and all elements were equal
-            else:
-                return len(self._key()) < len(other._key())
-        return NotImplemented
-
-    # https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
-    def _key(self):
-        return self.get_items()
-
-    def union(self, other):
-        assert isinstance(other, LRItemGroup)
-        return LRItemGroup(set(other.get_items()).union(set(self.get_items())))
-
-
-
-class Grammar:
+class BaseGrammar:
     def __init__(self, terminals, nonterminals, productions, start_symbol, prev_start_symbol=None):
         assert isinstance(terminals, set)
         assert isinstance(nonterminals, set)
@@ -217,7 +50,7 @@ class Grammar:
                 new_production = []
                 for term in production:
                     if isinstance(term, Terminal) and \
-                            isinstance(term.token, Tokens.EmptyToken):
+                            isinstance(term.token, EmptyToken):
                         continue
                     else:
                         new_production.append(term)
@@ -338,7 +171,7 @@ class Grammar:
                                for production in productions_for_rule
                                for symbol in production])
         terminals = all_rhs_symbols.difference(nonterminals)
-        return Grammar(terminals, nonterminals, productions, start_symbol)
+        return BaseGrammar(terminals, nonterminals, productions, start_symbol)
 
     def without_left_recursion(self):
         new_grammar = copy.copy(self)
@@ -477,13 +310,13 @@ class Grammar:
         first = set()
 
         for X_i in symbol_string:
-            first.update(self._first_cache[X_i].difference({Terminal._epsilon}))
-            if Terminal._epsilon not in self._first_cache[X_i]:
+            first.update(self._first_cache[X_i].difference({epsilon_terminal}))
+            if epsilon_terminal not in self._first_cache[X_i]:
                 # ε not in X_i so X_i+1 can't contribute to FIRST(symbol_string)
                 break
         else:
             # We made it here which means ε was in all X_i
-            first.add(Terminal._epsilon)
+            first.add(epsilon_terminal)
 
         self._first_cache[tuple(symbol_string)] = first
         return first
@@ -498,8 +331,8 @@ class Grammar:
         # If X -> ε is a production, then add ε to FIRST(X).
         for nonterminal in self.nonterminals:
             for productions in self.productions[nonterminal]:
-                if len(productions) == 1 and productions[0] == Terminal._epsilon:
-                    self._first_cache[nonterminal] = {Terminal._epsilon}
+                if len(productions) == 1 and productions[0] == epsilon_terminal:
+                    self._first_cache[nonterminal] = {epsilon_terminal}
                     break
             else:
                 self._first_cache[nonterminal] = set()
@@ -511,17 +344,17 @@ class Grammar:
                 for productions in self.productions[X]:
                     for Y_i in productions:
                         before = len(self._first_cache[X])
-                        self._first_cache[X].update(self._first_cache[Y_i].difference({Terminal._epsilon}))
+                        self._first_cache[X].update(self._first_cache[Y_i].difference({epsilon_terminal}))
                         if len(self._first_cache[X]) != before:
                             changed = True
 
-                        if Terminal._epsilon not in self._first_cache[Y_i]:
+                        if epsilon_terminal not in self._first_cache[Y_i]:
                             # ε not in Y_i so Y_i+1 can't contribute to FIRST(X)
                             break
                     else:
                         # We made it here which means ε was in all Y_i
-                        if Terminal._epsilon not in self._first_cache[X]:
-                            self._first_cache[X].add(Terminal._epsilon)
+                        if epsilon_terminal not in self._first_cache[X]:
+                            self._first_cache[X].add(epsilon_terminal)
                             change = True
 
     def follow(self, X):
@@ -552,7 +385,7 @@ class Grammar:
                         # alpha = production[:i] # not actually used
                         beta = production[(i+1):]
                         before = len(self._follow_cache[B])
-                        self._follow_cache[B].update(self.first(beta).difference({Terminal._epsilon}))
+                        self._follow_cache[B].update(self.first(beta).difference({epsilon_terminal}))
                         if len(self._follow_cache[B]) != before:
                             changed = True
 
@@ -565,7 +398,7 @@ class Grammar:
                             continue
                         # alpha = production[:i] # not actually used
                         beta = production[(i+1):]
-                        if Terminal._epsilon in self.first(beta):
+                        if epsilon_terminal in self.first(beta):
                             before = len(self._follow_cache[B])
                             self._follow_cache[B].update(self._follow_cache[A])
                             if len(self._follow_cache[B]) != before:
@@ -687,173 +520,3 @@ class Grammar:
         self._is_augmented = True
         self._prev_start_symbol = old_start
         self.start_symbol = new_start
-
-
-class LR1Grammar(Grammar):
-    def closure(self, I):
-        assert isinstance(I, LRItemGroup)
-        if I in self._closure_cache:
-            return self._closure_cache[I]
-
-        self.augment()
-
-        if len(I) == 0:
-            self._closure_cache[I] = I
-            return I
-
-        # Initially, add every item in I to CLOSURE(I)
-        closure = copy.copy(I)
-        last_len = None
-
-        # If A -> α . B β is in CLOSURE(I) and B -> γ is a production, then add the
-        # item B -> . γ to CLOSURE(I), if it is not already there. Apply this rule
-        # until no more new items can be added to CLOSURE(I).
-        while last_len != len(closure):
-            last_len = len(closure)
-
-            for item in closure.get_items():
-                assert isinstance(item, LR1Item)
-                A = item.A
-                production = item.production
-                if item.dot_position >= len(production):
-                    # This means the dot is to the right of the final symbol
-                    continue
-
-                alpha = production[:item.dot_position]
-                B = production[item.dot_position]
-                beta = production[(item.dot_position + 1):]
-                a = item.lookahead
-                if isinstance(B, Nonterminal):
-                    for gamma in self.productions[B]:
-                        for b in self.first((*beta, a)):
-                            closure.add(
-                                LR1Item(
-                                A=B,
-                                production=gamma,
-                                dot_position=0,
-                                lookahead=b))
-
-        self._closure_cache[I] = closure
-        return closure
-
-    def goto(self, I, X):
-        # Returns the closure of the set of all items [A -> α X . β] such that [A -> α . X β] is in I.
-        assert isinstance(I, LRItemGroup)
-        if (I, X) in self._goto_cache:
-            return self._goto_cache[(I, X)]
-
-        self.augment()
-
-        goto = LRItemGroup(set())
-        last_len = None
-
-        for item in I.get_items():
-            assert isinstance(item, LR1Item)
-            A = item.A
-            production = item.production
-            if item.dot_position >= len(production):
-                # This means the dot is to the right of the final symbol
-                continue
-
-            alpha = production[:item.dot_position]
-            potential_X = production[item.dot_position]
-            beta = production[(item.dot_position + 1):]
-
-            if potential_X == X:
-                goto.add(
-                    LR1Item(
-                    A=A,
-                    production=item.production,
-                    dot_position=item.dot_position + 1,
-                    lookahead=item.lookahead))
-
-        retval = self.closure(goto)
-        self._goto_cache[(I, X)] = retval
-        return retval
-
-    def items(self):
-        if self._items_cache is not None:
-            return self._items_cache
-
-        self._items_cache = dict()
-
-        self.augment()
-
-        C = {
-            self.closure(
-                LRItemGroup(
-                    {
-                        LR1Item(
-                            A=self.start_symbol,
-                            production=(self._prev_start_symbol, ),
-                            dot_position=0,
-                            lookahead=Terminal._end)}))}
-
-        last_len = None
-
-        while last_len != len(C):
-            last_len = len(C)
-
-            for I in copy.copy(C):
-                assert isinstance(I, LRItemGroup)
-                for X in self.terminals.union(self.nonterminals):
-                    goto = self.goto(I, X)
-                    if len(goto) > 0:
-                        C.add(goto)
-
-        self._items_cache = C
-        return sorted(C)
-
-    def compute_all_first(self):
-        super().compute_all_first()
-        self._first_cache[Terminal._end] = {Terminal._end}
-
-
-class LALRGrammar(LR1Grammar):
-    pass
-
-
-class TextbookGrammar(Grammar):
-    _grammar_dict = dict()
-
-    def __init__(self, name):
-        self.name = name
-        if len(self._grammar_dict) == 0:
-            self._init_grammar_dict()
-        if name in self._grammar_dict:
-            grammar = self._grammar_dict[name]
-        else:
-            raise Exception('Unknown textbook grammar')
-        grammar_copy = copy.copy(grammar)
-        super().__init__(
-            grammar_copy.terminals,
-            grammar_copy.nonterminals,
-            grammar_copy.productions,
-            grammar_copy.start_symbol)
-
-    def __repr__(self):
-        return f'TextbookGrammar({self.name})'
-
-    @classmethod
-    def _init_grammar_file_dict(cls):
-        for file in os.listdir(r'SyntaxAnalysis\Grammars'):
-            if file.endswith('.gmr'):
-                with open(os.path.join(r'SyntaxAnalysis\Grammars', file), mode='r', encoding='utf-8') as f:
-                    cls._grammar_dict[file[:-4]] = Grammar.from_string(''.join(f.readlines()))
-
-    @classmethod
-    def _init_grammar_dict(cls):
-        cls._init_grammar_file_dict()
-
-        cls._grammar_dict['4.20'] = cls._grammar_dict['4.18'].without_left_recursion()
-        cls._grammar_dict['4.24'] = cls._grammar_dict['4.23'].left_factored()
-        cls._grammar_dict['ANSI C refactored'] = cls._grammar_dict['ANSI C'].without_left_recursion()
-        cls._grammar_dict['ANSI C refactored2'] = cls._grammar_dict['ANSI C refactored'].left_factored()
-
-
-def do_stuff():
-    g = TextbookGrammar('ANSI C refactored2')
-    print(g)
-
-if __name__ == '__main__':
-    do_stuff()

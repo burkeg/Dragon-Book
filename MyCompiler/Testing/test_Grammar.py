@@ -1,6 +1,9 @@
 from unittest import TestCase
 
-import Grammar
+from BaseGrammar import BaseGrammar
+from GrammarFileLoader import GrammarFileLoader
+from Nonterminal import Nonterminal
+from Terminal import Terminal
 
 
 class TestGrammar(TestCase):
@@ -46,7 +49,7 @@ class TestGrammar(TestCase):
 
         for grammar, action_dict in grammars:
             with self.subTest(grammar=grammar):
-                g = Grammar.Grammar.from_string(grammar, action_dict)
+                g = BaseGrammar.from_string(grammar, action_dict)
                 print('productions: ', g.productions)
 
     def test_left_factored(self):
@@ -63,7 +66,7 @@ class TestGrammar(TestCase):
 
         for grammar in grammars:
             with self.subTest(grammar=grammar):
-                g = Grammar.Grammar.from_string(grammar)
+                g = BaseGrammar.from_string(grammar)
                 print('Before:\n', g)
                 left_factored = g.left_factored()
                 print('After:\n', left_factored)
@@ -83,7 +86,7 @@ class TestGrammar(TestCase):
 
         for grammar in grammars:
             with self.subTest(grammar=grammar):
-                g = Grammar.Grammar.from_string(grammar)
+                g = BaseGrammar.from_string(grammar)
                 print('Before:\n', g)
                 without_left_recursion = g.without_left_recursion()
                 print('After:\n', without_left_recursion)
@@ -100,14 +103,14 @@ class TestGrammar(TestCase):
                 # S -> 'c' A 'd'
                 # A -> 'a' 'b' | 'a'
                 # """
-                Grammar.TextbookGrammar('4.29'),
+                GrammarFileLoader.load('4.29'),
                 [
                     (
-                        Grammar.Nonterminal('S'),
+                        Nonterminal('S'),
                         {'c'}
                     ),
                     (
-                        Grammar.Nonterminal('A'),
+                        Nonterminal('A'),
                         {'a'}
                     ),
                 ]
@@ -117,14 +120,14 @@ class TestGrammar(TestCase):
                 # S -> A 'a' | 'b'
                 # A -> A 'c' | S 'd' | 'ε'
                 # """
-                Grammar.TextbookGrammar('4.18'),
+                GrammarFileLoader.load('4.18'),
                 [
                     (
-                        Grammar.Nonterminal('S'),
+                        Nonterminal('S'),
                         {'a', 'b', 'c'}
                     ),
                     (
-                        Grammar.Nonterminal('A'),
+                        Nonterminal('A'),
                         {'a', 'b', 'c', 'ε'}
                     ),
                 ]
@@ -138,10 +141,10 @@ class TestGrammar(TestCase):
                 # change and new symbols can be introduced. Modifying the behavior of
                 # simplify() or without_left_recursion() can break these tests despite still
                 # having correct outputs.
-                Grammar.TextbookGrammar('4.20'),
+                GrammarFileLoader.load('4.20'),
                 [
                     (
-                        Grammar.Nonterminal('S'),
+                        Nonterminal('S'),
                         {'a', 'b', 'c'}
                     ),
                 ]
@@ -154,26 +157,26 @@ class TestGrammar(TestCase):
                 # Tp -> '*' F Tp | 'ε'
                 # F -> '(' E ')' | 'id'
                 # """
-                Grammar.TextbookGrammar('4.28'),
+                GrammarFileLoader.load('4.28'),
                 [
                     (
-                        Grammar.Nonterminal('E'),
+                        Nonterminal('E'),
                         {'(', 'id'}
                     ),
                     (
-                        Grammar.Nonterminal('Ep'),
+                        Nonterminal('Ep'),
                         {'+', 'ε'}
                     ),
                     (
-                        Grammar.Nonterminal('T'),
+                        Nonterminal('T'),
                         {'(', 'id'}
                     ),
                     (
-                        Grammar.Nonterminal('Tp'),
+                        Nonterminal('Tp'),
                         {'*', 'ε'}
                     ),
                     (
-                        Grammar.Nonterminal('F'),
+                        Nonterminal('F'),
                         {'(', 'id'}
                     ),
                 ]
@@ -181,14 +184,14 @@ class TestGrammar(TestCase):
         ]
 
         for grammar, test_cases in grammars:
-                if isinstance(grammar, Grammar.Grammar):
+                if isinstance(grammar, BaseGrammar):
                     g = grammar
                 else:
-                    g = Grammar.Grammar.from_string(grammar)
+                    g = BaseGrammar.from_string(grammar)
                 for find_start, expected_string in test_cases:
                     with self.subTest(start_of=find_start, expected=expected_string):
                         actual = g.first(find_start)
-                        expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
+                        expected = set([Terminal(str_version) for str_version in expected_string])
                         assert actual == expected
 
     def test_follow(self):
@@ -198,14 +201,14 @@ class TestGrammar(TestCase):
                 # S -> 'c' A 'd'
                 # A -> 'a' 'b' | 'a'
                 # """
-                Grammar.TextbookGrammar('4.29'),
+                GrammarFileLoader.load('4.29'),
                 [
                     (
-                        Grammar.Nonterminal('S'),
+                        Nonterminal('S'),
                         {'$'}
                     ),
                     (
-                        Grammar.Nonterminal('A'),
+                        Nonterminal('A'),
                         {'d'}
                     ),
                 ]
@@ -215,14 +218,14 @@ class TestGrammar(TestCase):
                 # S -> A 'a' | 'b'
                 # A -> A 'c' | S 'd' | 'ε'
                 # """
-                Grammar.TextbookGrammar('4.18'),
+                GrammarFileLoader.load('4.18'),
                 [
                     (
-                        Grammar.Nonterminal('S'),
+                        Nonterminal('S'),
                         {'$', 'd'}
                     ),
                     (
-                        Grammar.Nonterminal('A'),
+                        Nonterminal('A'),
                         {'a', 'c'}
                     ),
                 ]
@@ -236,18 +239,18 @@ class TestGrammar(TestCase):
                 # change and new symbols can be introduced. Modifying the behavior of
                 # simplify() or without_left_recursion() can break these tests despite still
                 # having correct outputs.
-                Grammar.TextbookGrammar('4.20'),
+                GrammarFileLoader.load('4.20'),
                 [
                     (
-                        Grammar.Nonterminal('S'),
+                        Nonterminal('S'),
                         {'$'}
                     ),
                     (
-                        Grammar.Nonterminal('A_1'),
+                        Nonterminal('A_1'),
                         {'a'}
                     ),
                     (
-                        Grammar.Nonterminal('S_2'),
+                        Nonterminal('S_2'),
                         {'$'}
                     ),
                 ]
@@ -260,26 +263,26 @@ class TestGrammar(TestCase):
                 # Tp -> '*' F Tp | 'ε'
                 # F -> '(' E ')' | 'id'
                 # """
-                Grammar.TextbookGrammar('4.28'),
+                GrammarFileLoader.load('4.28'),
                 [
                     (
-                        Grammar.Nonterminal('E'),
+                        Nonterminal('E'),
                         {'$', ')'}
                     ),
                     (
-                        Grammar.Nonterminal('Ep'),
+                        Nonterminal('Ep'),
                         {'$', ')'}
                     ),
                     (
-                        Grammar.Nonterminal('T'),
+                        Nonterminal('T'),
                         {'+', '$', ')'}
                     ),
                     (
-                        Grammar.Nonterminal('Tp'),
+                        Nonterminal('Tp'),
                         {'+', '$', ')'}
                     ),
                     (
-                        Grammar.Nonterminal('F'),
+                        Nonterminal('F'),
                         {'*', '+', '$', ')'}
                     ),
                 ]
@@ -287,14 +290,14 @@ class TestGrammar(TestCase):
         ]
 
         for grammar, test_cases in grammars:
-                if isinstance(grammar, Grammar.Grammar):
+                if isinstance(grammar, BaseGrammar):
                     g = grammar
                 else:
-                    g = Grammar.Grammar.from_string(grammar)
+                    g = BaseGrammar.from_string(grammar)
                 for find_follow, expected_string in test_cases:
                     with self.subTest(follow_of=find_follow, expected=expected_string):
                         actual = g.follow(find_follow)
-                        expected = set([Grammar.Terminal(str_version) for str_version in expected_string])
+                        expected = set([Terminal(str_version) for str_version in expected_string])
                         if not(actual == expected):
                             assert False
 

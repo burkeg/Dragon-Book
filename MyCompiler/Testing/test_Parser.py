@@ -1,8 +1,10 @@
 from unittest import TestCase
 
-import Grammar
-import Parser
-import LexicalAnalyzer
+from CanonicalLR1Parser import CanonicalLR1Parser
+from GrammarFileLoader import GrammarFileLoader
+from LexicalAnalyzer import LexicalAnalyzer
+from SLR1Parser import SLR1Parser
+from SpaceConsumingLALRParser import SpaceConsumingLALRParser
 
 
 class Test(TestCase):
@@ -10,7 +12,7 @@ class Test(TestCase):
         test_data = \
             [
                 # ( # last time I ran this it took 6 and a half hours only to fail...
-                #     Grammar.TextbookGrammar('ANSI C'),
+                #     GrammarFileLoader.load('ANSI C'),
                 #     Parser.CanonicalLR1Parser,
                 #     LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
                 #     [
@@ -23,9 +25,9 @@ class Test(TestCase):
                 #     ]
                 # ),
                 (
-                    Grammar.TextbookGrammar('4.40_2'),
-                    Parser.SLR1Parser,
-                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    GrammarFileLoader.load('4.40_2'),
+                    SLR1Parser,
+                    LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """
                         a * b + c
@@ -45,9 +47,9 @@ class Test(TestCase):
                     ]
                 ),
                 (
-                    Grammar.TextbookGrammar('4.40'),
-                    Parser.SLR1Parser,
-                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    GrammarFileLoader.load('4.40'),
+                    SLR1Parser,
+                    LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """
                         a * b + c
@@ -67,9 +69,9 @@ class Test(TestCase):
                     ]
                 ),
                 (
-                    Grammar.TextbookGrammar('4.55'),
-                    Parser.CanonicalLR1Parser,
-                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    GrammarFileLoader.load('4.55'),
+                    CanonicalLR1Parser,
+                    LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """
                         1 1
@@ -89,9 +91,9 @@ class Test(TestCase):
                     ]
                 ),
                 (
-                    Grammar.TextbookGrammar('4.55'),
-                    Parser.SpaceConsumingLALRParser,
-                    LexicalAnalyzer.LexicalAnalyzer.ANSI_C_lexer(),
+                    GrammarFileLoader.load('4.55'),
+                    SpaceConsumingLALRParser,
+                    LexicalAnalyzer.ANSI_C_lexer(),
                     [
                         """
                         1 1
