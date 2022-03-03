@@ -1,3 +1,5 @@
+from ActionTables.BaseActionTable import BaseActionTable, ActionConflict
+from Disambiguator import Disambiguator
 from Tokens import EndToken
 from BaseGrammar import BaseGrammar
 from Enums import LRAction
@@ -12,7 +14,7 @@ class SLRParsingTable:
         assert isinstance(grammar, BaseGrammar)
         self._grammar = grammar
         self._states = None
-        self._action_table = dict()
+        self._action_table = BaseActionTable()
         self._goto_table = dict()
         self.start_state = None
         self.setup()
@@ -57,9 +59,10 @@ class SLRParsingTable:
                         # If [S' -> S] is in I_i, then set ACTION[i, $] to "accept."
                         key = (self._get_state_ID(state), EndToken)
                         value = (LRAction.ACCEPT, None)
-                        assert key not in self._action_table or self._action_table[key] == value, \
-                            'Grammar is not SLR(1), conflicting actions exist.'
-                        self._action_table[key] = value
+                        try:
+                            self._action_table.add_action(key, value)
+                        except ActionConflict:
+                            raise Exception('Grammar is not SLR(1), conflicting actions exist.')
                     else:
                         # (b)
                         # If [A -> α .] is in I_i, then set ACTION[i, a] to "reduce A -> α" for all
@@ -67,9 +70,10 @@ class SLRParsingTable:
                         for a in self._grammar.follow(item.A):
                             key = (self._get_state_ID(state), type(a.token))
                             value = (LRAction.REDUCE, item)
-                            assert key not in self._action_table or self._action_table[key] == value, \
-                                'Grammar is not SLR(1), conflicting actions exist.'
-                            self._action_table[key] = value
+                            try:
+                                self._action_table.add_action(key, value)
+                            except ActionConflict:
+                                raise Exception('Grammar is not SLR(1), conflicting actions exist.')
                 else:
                     a = item.production[item.dot_position]
 
@@ -81,10 +85,10 @@ class SLRParsingTable:
                             if j := self.find_state(self._states, I_j):
                                 key = (self._get_state_ID(state), type(a.token))
                                 value = (LRAction.SHIFT, self._get_state_ID(j))
-                                assert key not in self._action_table or self._action_table[key] == value, \
-                                    'Grammar is not SLR(1), conflicting actions exist.'
-
-                                self._action_table[key] = value
+                                try:
+                                    self._action_table.add_action(key, value)
+                                except ActionConflict:
+                                    raise Exception('Grammar is not SLR(1), conflicting actions exist.')
 
     def _get_state_ID(self, state):
         return state.ID
@@ -108,9 +112,12 @@ class SLRParsingTable:
         assert isinstance(s, LRState)
         assert isinstance(a, Terminal)
         key = (self._get_state_ID(s), type(a.token))
-        if key not in self._action_table:
+        action_table_entry = self._action_table.get_action(key)
+        if action_table_entry is None:
             return LRAction.ERROR, None
-        action, data = self._action_table[key]
+        if isinstance(action_table_entry, Disambiguator):
+            return action_table_entry
+        action, data = action_table_entry
         if action == LRAction.SHIFT:
             return action, self._get_state_from_ID(data)
         else:

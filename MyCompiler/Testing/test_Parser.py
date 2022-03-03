@@ -1,10 +1,14 @@
 from unittest import TestCase
 
+from AmbiguousLALRParsingTable import Disambiguator
 from CanonicalLR1Parser import CanonicalLR1Parser
+from Enums import Associativity
 from GrammarFileLoader import GrammarFileLoader
 from LexicalAnalyzer import LexicalAnalyzer
 from SLR1Parser import SLR1Parser
 from SpaceConsumingLALRParser import SpaceConsumingLALRParser
+from AmbiguousLALRParser import AmbiguousLALRParser
+from Tokens import PlusToken, AsterixToken
 
 
 class Test(TestCase):
@@ -116,6 +120,26 @@ class Test(TestCase):
             """,
             """
             1 c 1
+            """,
+        ]
+        create_parse_tree(self, grammar_file_name, grammar, parser, lexer, test_cases)
+
+    def test_4_3_AmbiguousLR_to_parse_tree(self):
+        grammar_file_name = '4.3'
+        grammar = GrammarFileLoader.load(grammar_file_name)
+        parser = AmbiguousLALRParser(
+            grammar=grammar,
+            disambiguator=Disambiguator([
+                (AsterixToken, Associativity.LEFT),
+                (PlusToken, Associativity.LEFT),
+            ]))
+        lexer = LexicalAnalyzer.ANSI_C_lexer()
+        test_cases = [
+            """
+            a + b * c 
+            """,
+            """
+            a + b
             """,
         ]
         create_parse_tree(self, grammar_file_name, grammar, parser, lexer, test_cases)

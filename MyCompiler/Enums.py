@@ -157,3 +157,8 @@ class LRAction(Enum):
     REDUCE = 2
     ACCEPT = 3
     ERROR = 4
+
+
+class Associativity(Enum):
+    LEFT = 1
+    RIGHT = 2
